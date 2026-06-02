@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>aneliakuzmanova.com</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --primary: #FF6B35;
+            --secondary: #F7931E;
+            --dark: #1A1A1D;
+            --light: #F8F9FA;
+            --accent: #4ECDC4;
+        }
+        body {
+            font-family: 'Arial', sans-serif;
+            color: #333;
+            background: var(--light);
+        }
+        .hero {
+            background: linear-gradient(135deg, var(--dark), #2d2d30);
+            color: white;
+            padding: 60px 20px;
+            text-align: center;
+        }
+        .hero h1 { font-size: 2.5rem; margin-bottom: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        section { padding: 60px 20px; }
+        .classes-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 30px;
+            margin: 40px 0;
+        }
+        .class-card {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        .class-card h3 { color: var(--primary); margin: 20px 0; }
+        .class-card .price { font-size: 1.5rem; font-weight: bold; color: var(--primary); }
+        .schedule { background: white; padding: 40px; }
+        .day-schedule {
+            background: var(--light);
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 10px;
+            border-left: 5px solid var(--primary);
+        }
+        .day-header { font-weight: bold; font-size: 1.2rem; margin-bottom: 15px; }
+        .time-slot {
+            background: white;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        .slot-time { font-weight: bold; color: var(--primary); }
+        .slot-class { font-weight: bold; }
+        .slot-price { color: var(--primary); font-weight: bold; }
+        .btn {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: transform 0.3s;
+        }
+        .btn:hover { transform: translateY(-2px); }
+        .btn-admin {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            font-size: 1.5rem;
+            z-index: 100;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal.active { display: flex; }
+        .modal-content {
+            background: white;
+            padding: 40px;
+            border-radius: 15px;
+            width: 90%;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+            position: relative;
+        }
+        .close-btn {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            font-size: 2rem;
+            cursor: pointer;
+            color: #999;
+        }
+        .modal h2 { margin-bottom: 30px; color: var(--dark); }
+        .modal input, .modal select {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-family: Arial, sans-serif;
+        }
+        .modal label { font-weight: bold; margin-top: 15px; display: block; }
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin: 20px 0;
+            border-bottom: 2px solid #ddd;
+        }
+        .tab-btn {
+            padding: 10px 20px;
+            background: none;
+            border: none;
+            border-bottom: 3px solid transparent;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 1rem;
+        }
+        .tab-btn.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+        }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .bookings-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .booking-item {
+            background: var(--light);
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 8px;
+            border-left: 4px solid var(--primary);
+        }
+        .booking-item strong { display: block; margin-bottom: 5px; }
+        .booking-item small { color: #666; display: block; margin: 5px 0; }
+        .delete-btn {
+            background: #e74c3c;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+        .delete-btn:hover { background: #c0392b; }
+        .empty { text-align: center; color: #999; padding: 30px; }
+    </style>
+</head>
+<body>
+    <!-- Hero -->
+    <div class="hero">
+        <h1>aneliakuzmanova.com</h1>
+        <p>Трансформирай тялото си с професионални тренировки</p>
+    </div>
+
+    <!-- Classes -->
+    <section class="container">
+        <h2 style="text-align: center; margin-bottom: 40px;">Видове тренировки</h2>
+        <div class="classes-grid">
+            <div class="class-card">
+                <h3>🤸‍♀️ РГ и Мобилност</h3>
+                
+                <div class="price">5€</div>
+            </div>
+            <div class="class-card">
+                <h3>💃 Аеробика и Табата</h3>
+                
+                <div class="price">5€</div>
+            </div>
+            <div class="class-card">
+                <h3>🏋️‍♀️ Индивидуална тренировка</h3>
+                
+                <div class="price">10€</div>
+            </div>
+            <div class="class-card">
+                <h3>🩺 Рехабилитационна програма</h3>
+                
+                <div class="price">35€</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Schedule -->
+    <section class="schedule container">
+        <h2 style="text-align: center; margin-bottom: 40px;">Седмичен График</h2>
+        <div id="scheduleList"></div>
+    </section>
+
+    <!-- Admin Button -->
+    <button class="btn btn-admin" onclick="openAdminPanel()" title="Админ Панел">⚙️</button>
+
+    <!-- Admin Modal -->
+    <div id="adminModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeAdminPanel()">✕</span>
+            
+            <!-- Login Form -->
+            <div id="loginForm">
+                <h2>Админ Панел</h2>
+                <label>Парола:</label>
+                <input type="password" id="password" placeholder="Въведи парола">
+                <button class="btn" style="width: 100%; margin-top: 20px;" onclick="loginAdmin()">Влез</button>
+            </div>
+
+            <!-- Admin Dashboard -->
+            <div id="adminDash" style="display: none;">
+                <h2>Админ Панел - Добре дошъл!</h2>
+                
+                <div class="tabs">
+                    <button class="tab-btn active" onclick="switchTab('bookings')">Записани Хора</button>
+                    <button class="tab-btn" onclick="switchTab('editSchedule')">Редактирай График</button>
+                </div>
+
+                <!-- Bookings Tab -->
+                <div id="bookings" class="tab-content active">
+                    <h3>Списък на записаните хора</h3>
+                    <div class="bookings-list" id="bookingsList"></div>
+                </div>
+
+                <!-- Edit Schedule Tab -->
+                <div id="editSchedule" class="tab-content">
+                    <h3>Редактирай Графика</h3>
+                    <button class="btn" onclick="addNewSchedule()" style="margin-bottom: 20px;">+ Добави Нова Тренировка</button>
+                    <div id="scheduleEditList"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Booking Modal -->
+    <div id="bookingModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeBookingModal()">✕</span>
+            <h2>Запиши се за тренировка</h2>
+            <form onsubmit="submitBooking(event)">
+                <label>Име:</label>
+                <input type="text" id="bookingName" required>
+                <label>Телефон:</label>
+                <input type="tel" id="bookingPhone" required>
+                <label>Ден:</label>
+                <input type="text" id="bookingDay" readonly>
+                <label>Час:</label>
+                <input type="text" id="bookingTime" readonly>
+                <label>Тренировка:</label>
+                <input type="text" id="bookingClass" readonly>
+                <label>Цена:</label>
+                <input type="text" id="bookingPrice" readonly>
+                <button type="submit" class="btn" style="width: 100%; margin-top: 20px;">Потвърди</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Initialize
+        let schedule = {
+            'Понеделник': [
+                { time: '09:00', class: 'Табата', price: 5 },
+                { time: '18:00', class: 'Аеробика и Табата', price: 5 }
+            ],
+            'Вторник': [
+                { time: '10:00', class: 'Табата', price: 5 },
+                { time: '18:00', class: 'Индивидуална тренировка', price: 10 }
+            ],
+            'Сряда': [
+                { time: '09:00', class: 'РГ и Мобилност', price: 5 },
+                { time: '18:30', class: 'Индивидуална тренировка', price: 10 }
+            ],
+            'Четвъртък': [
+                { time: '10:00', class: 'РГ и Мобилност', price: 5 },
+                { time: '18:00', class: 'Табата', price: 5 }
+            ],
+            'Петък': [
+                { time: '09:00', class: 'РГ и Мобилност', price: 5 },
+                { time: '17:00', class: 'Аеробика и Табата', price: 5 }
+            ],
+            'Събота': [
+                { time: '10:00', class: 'Табата', price: 5 },
+                { time: '12:00', class: 'Индивидуална тренировка', price: 10 }
+            ]
+        };
+
+        // Load schedule
+        function loadSchedule() {
+            const html = Object.entries(schedule).map(([day, slots]) => `
+                <div class="day-schedule">
+                    <div class="day-header">${day}</div>
+                    ${slots.map(slot => `
+                        <div class="time-slot">
+                            <div>
+                                <div class="slot-time">${slot.time}</div>
+                                <div class="slot-class">${slot.class}</div>
+                            </div>
+                            <div class="slot-price">${slot.price}€</div>
+                            <button class="btn" onclick="openBookingModal('${day}', '${slot.time}', '${slot.class}', ${slot.price})">Запиши се</button>
+                        </div>
+                    `).join('')}
+                </div>
+            `).join('');
+            document.getElementById('scheduleList').innerHTML = html;
+        }
+
+        // Booking Modal
+        function openBookingModal(day, time, cls, price) {
+            document.getElementById('bookingDay').value = day;
+            document.getElementById('bookingTime').value = time;
+            document.getElementById('bookingClass').value = cls;
+            document.getElementById('bookingPrice').value = price + '€';
+            document.getElementById('bookingModal').classList.add('active');
+        }
+
+        function closeBookingModal() {
+            document.getElementById('bookingModal').classList.remove('active');
+        }
+
+        function submitBooking(e) {
+            e.preventDefault();
+            const booking = {
+                id: Date.now(),
+                name: document.getElementById('bookingName').value,
+                phone: document.getElementById('bookingPhone').value,
+                day: document.getElementById('bookingDay').value,
+                time: document.getElementById('bookingTime').value,
+                class: document.getElementById('bookingClass').value,
+                price: document.getElementById('bookingPrice').value,
+                date: new Date().toLocaleString('bg-BG')
+            };
+            let bookings = JSON.parse(localStorage.getItem('bookings')) || [];
+            bookings.push(booking);
+            localStorage.setItem('bookings', JSON.stringify(bookings));
+            alert('✓ Успешно записване!');
+            closeBookingModal();
+            e.target.reset();
+        }
+
+        // Admin Panel
+        function openAdminPanel() {
+            document.getElementById('adminModal').classList.add('active');
+            loadBookingsList();
+            loadScheduleEdit();
+        }
+
+        function closeAdminPanel() {
+            document.getElementById('adminModal').classList.remove('active');
+            document.getElementById('loginForm').style.display = 'block';
+            document.getElementById('adminDash').style.display = 'none';
+            document.getElementById('password').value = '';
+        }
+
+        function loginAdmin() {
+            const pass = document.getElementById('password').value;
+            if (pass === '1234') {
+                document.getElementById('loginForm').style.display = 'none';
+                document.getElementById('adminDash').style.display = 'block';
+                alert('✓ Успешен вход!');
+            } else {
+                alert('❌ Грешна парола! Парола: 1234');
+                document.getElementById('password').value = '';
+            }
+        }
+
+        function switchTab(tab) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+            document.getElementById(tab).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        function loadBookingsList() {
+            const bookings = JSON.parse(localStorage.getItem('bookings')) || [];
+            const list = document.getElementById('bookingsList');
+            if (bookings.length === 0) {
+                list.innerHTML = '<div class="empty">Няма записания</div>';
+                return;
+            }
+            list.innerHTML = bookings.map(b => `
+                <div class="booking-item">
+                    <strong>👤 ${b.name}</strong>
+                    <small>📞 ${b.phone}</small>
+                    <small>${b.day} - ${b.time}</small>
+                    <small>${b.class} (${b.price})</small>
+                    <small style="color: #999;">Записано: ${b.date}</small>
+                    <button class="delete-btn" onclick="deleteBooking(${b.id})">Изтрий</button>
+                </div>
+            `).join('');
+        }
+
+        function deleteBooking(id) {
+            if (confirm('Сигурен ли си?')) {
+                let bookings = JSON.parse(localStorage.getItem('bookings')) || [];
+                bookings = bookings.filter(b => b.id !== id);
+                localStorage.setItem('bookings', JSON.stringify(bookings));
+                loadBookingsList();
+            }
+        }
+
+        function loadScheduleEdit() {
+            const list = document.getElementById('scheduleEditList');
+            list.innerHTML = Object.entries(schedule).map(([day, slots], dayIdx) => `
+                <div style="margin-bottom: 20px; padding: 15px; background: #f5f5f5; border-radius: 8px;">
+                    <h4>${day}</h4>
+                    ${slots.map((slot, slotIdx) => `
+                        <div style="background: white; padding: 10px; margin: 10px 0; border-radius: 5px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+                            <input type="time" value="${slot.time}" onchange="updateSlot('${day}', ${slotIdx}, 'time', this.value)" style="width: 100px;">
+                            <input type="text" value="${slot.class}" onchange="updateSlot('${day}', ${slotIdx}, 'class', this.value)" style="flex: 1; min-width: 150px;">
+                            <input type="number" value="${slot.price}" onchange="updateSlot('${day}', ${slotIdx}, 'price', this.value)" style="width: 80px;">
+                            <button class="delete-btn" onclick="deleteSlot('${day}', ${slotIdx})">Изтрий</button>
+                        </div>
+                    `).join('')}
+                </div>
+            `).join('');
+        }
+
+        function updateSlot(day, idx, field, value) {
+            if (field === 'price') value = parseInt(value);
+            schedule[day][idx][field] = value;
+            loadScheduleEdit();
+        }
+
+        function deleteSlot(day, idx) {
+            console.log('Изтриване на:', day, idx);
+            if (confirm('Сигурен ли си че искаш да изтриеш тази тренировка?')) {
+                if (schedule[day] && schedule[day][idx]) {
+                    schedule[day].splice(idx, 1);
+                    loadScheduleEdit();
+                    alert('✓ Тренировката е изтрита!');
+                } else {
+                    alert('❌ Грешка при изтриване!');
+                }
+            }
+        }
+
+        function addNewSchedule() {
+            const day = prompt('Ден (Понеделник, Вторник...)');
+            const time = prompt('Час (09:00)');
+            const cls = prompt('Клас (РГ и Мобилност, Аеробика и Табата, Индивидуална тренировка, Рехабилитационна програма)');
+            const price = parseInt(prompt('Цена (5 или 10)'));
+            
+            if (day && time && cls && price) {
+                if (!schedule[day]) schedule[day] = [];
+                schedule[day].push({ time, class: cls, price });
+                loadScheduleEdit();
+                alert('✓ Добавено!');
+            }
+        }
+
+        // Initialize
+        loadSchedule();
+    </script>
+</body>
+</html>
