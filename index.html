@@ -355,9 +355,38 @@
             let bookings = JSON.parse(localStorage.getItem('bookings')) || [];
             bookings.push(booking);
             localStorage.setItem('bookings', JSON.stringify(bookings));
+
+            // Изпрати браузър известие
+            sendNotification(booking);
+
             alert('✓ Успешно записване!');
             closeBookingModal();
             e.target.reset();
+        }
+
+        // Поиска разрешение за известия при зареждане
+        function requestNotificationPermission() {
+            if ('Notification' in window) {
+                Notification.requestPermission().then(permission => {
+                    if (permission === 'granted') {
+                        new Notification('🔔 FitFlow известия включени!', {
+                            body: 'Ще получавате известия при нови записвания.',
+                            icon: 'https://cdn-icons-png.flaticon.com/512/2936/2936886.png'
+                        });
+                    }
+                });
+            }
+        }
+
+        // Изпраща известие при ново записване
+        function sendNotification(booking) {
+            if ('Notification' in window && Notification.permission === 'granted') {
+                new Notification('🏋️ Ново записване!', {
+                    body: `${booking.name} | ${booking.day} ${booking.time} | ${booking.class} | ${booking.price}`,
+                    icon: 'https://cdn-icons-png.flaticon.com/512/2936/2936886.png',
+                    vibrate: [200, 100, 200]
+                });
+            }
         }
 
         // Admin Panel
@@ -473,6 +502,7 @@
 
         // Initialize
         loadSchedule();
+        requestNotificationPermission();
     </script>
 </body>
 </html>
