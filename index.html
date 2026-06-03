@@ -377,8 +377,8 @@
                                 <button class="btn" onclick="openBookingModal('${day}', '${slot.time}', '${slot.class}', ${slot.price})" ${full ? 'disabled style="background:#ccc;cursor:not-allowed;"' : ''}>
                                     ${full ? 'Няма места' : 'Запиши се'}
                                 </button>
-                                <div style="font-size: 0.85rem; color: ${full ? '#e74c3c' : '#666'}; margin-top: 5px; text-align: center;">
-                                    Запазени места: ${count}
+                                <div style="font-size: 0.85rem; color: ${full ? '#e74c3c' : '#333'}; margin-top: 5px; text-align: center;">
+                                    ${full ? 'Няма свободни места' : remaining <= 5 ? `Оставащи места: ${remaining}` : ''}
                                 </div>
                             </div>
                         </div>`;
