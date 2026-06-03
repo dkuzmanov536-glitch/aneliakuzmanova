@@ -429,15 +429,14 @@
             formData.append('Цена', booking.price);
             formData.append('Дата', booking.date);
 
-            fetch('https://formspree.io/f/mvznpdwz', {
+            // Изпрати до Димитър
+            fetch('https://formspree.io/f/mvznpyer', {
                 method: 'POST',
                 body: formData,
                 headers: { 'Accept': 'application/json' }
-            }).then(res => {
-                if (!res.ok) console.error('Formspree грешка:', res.status);
             });
 
-            // Изпрати и до Анелия
+            // Изпрати до Анелия
             fetch('https://formspree.io/f/xqeozjgr', {
                 method: 'POST',
                 body: formData,
