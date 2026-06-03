@@ -308,20 +308,41 @@
         };
 
         // Load schedule
+        function getBookingsCount(day, time) {
+            const bookings = JSON.parse(localStorage.getItem('bookings')) || [];
+            return bookings.filter(b => b.day === day && b.time === time).length;
+        }
+
+        function getCapacity() {
+            return parseInt(localStorage.getItem('capacity')) || 10;
+        }
+
         function loadSchedule() {
+            const capacity = getCapacity();
             const html = Object.entries(schedule).map(([day, slots]) => `
                 <div class="day-schedule">
                     <div class="day-header">${day}</div>
-                    ${slots.map(slot => `
+                    ${slots.map(slot => {
+                        const count = getBookingsCount(day, slot.time);
+                        const remaining = capacity - count;
+                        const full = remaining <= 0;
+                        return `
                         <div class="time-slot">
                             <div>
                                 <div class="slot-time">${slot.time}</div>
                                 <div class="slot-class">${slot.class}</div>
                             </div>
                             <div class="slot-price">${slot.price}€</div>
-                            <button class="btn" onclick="openBookingModal('${day}', '${slot.time}', '${slot.class}', ${slot.price})">Запиши се</button>
-                        </div>
-                    `).join('')}
+                            <div>
+                                <button class="btn" onclick="openBookingModal('${day}', '${slot.time}', '${slot.class}', ${slot.price})" ${full ? 'disabled style="background:#ccc;cursor:not-allowed;"' : ''}>
+                                    ${full ? 'Няма места' : 'Запиши се'}
+                                </button>
+                                <div style="font-size: 0.85rem; color: ${full ? '#e74c3c' : '#666'}; margin-top: 5px; text-align: center;">
+                                    Запазени места: ${count}
+                                </div>
+                            </div>
+                        </div>`;
+                    }).join('')}
                 </div>
             `).join('');
             document.getElementById('scheduleList').innerHTML = html;
@@ -422,12 +443,11 @@
 
         function loginAdmin() {
             const pass = document.getElementById('password').value;
-            if (pass === '1234') {
+            if (pass === '8675') {
                 document.getElementById('loginForm').style.display = 'none';
                 document.getElementById('adminDash').style.display = 'block';
-                alert('✓ Успешен вход!');
             } else {
-                alert('❌ Грешна парола! Парола: 1234');
+                alert('❌ Грешна парола!');
                 document.getElementById('password').value = '';
             }
         }
@@ -468,26 +488,57 @@
         }
 
         function loadScheduleEdit() {
+            const capacity = getCapacity();
             const list = document.getElementById('scheduleEditList');
-            list.innerHTML = Object.entries(schedule).map(([day, slots], dayIdx) => `
+            list.innerHTML = `
+                <div style="background: #fff3cd; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                    <h4 style="margin-bottom: 10px;">⚙️ Капацитет на залата</h4>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <input type="number" id="capacityInput" value="${capacity}" min="1" style="width: 80px; padding: 8px; border: 1px solid #ddd; border-radius: 5px;">
+                        <span>места</span>
+                        <button class="btn" onclick="saveCapacity()">Потвърди</button>
+                    </div>
+                </div>
+                ${Object.entries(schedule).map(([day, slots], dayIdx) => `
                 <div style="margin-bottom: 20px; padding: 15px; background: #f5f5f5; border-radius: 8px;">
                     <h4>${day}</h4>
                     ${slots.map((slot, slotIdx) => `
                         <div style="background: white; padding: 10px; margin: 10px 0; border-radius: 5px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
-                            <input type="time" value="${slot.time}" onchange="updateSlot('${day}', ${slotIdx}, 'time', this.value)" style="width: 100px;">
-                            <input type="text" value="${slot.class}" onchange="updateSlot('${day}', ${slotIdx}, 'class', this.value)" style="flex: 1; min-width: 150px;">
-                            <input type="number" value="${slot.price}" onchange="updateSlot('${day}', ${slotIdx}, 'price', this.value)" style="width: 80px;">
+                            <input type="time" value="${slot.time}" id="slot_${day}_${slotIdx}_time" style="width: 100px;">
+                            <input type="text" value="${slot.class}" id="slot_${day}_${slotIdx}_class" style="flex: 1; min-width: 150px;">
+                            <input type="number" value="${slot.price}" id="slot_${day}_${slotIdx}_price" style="width: 80px;">
                             <button class="delete-btn" onclick="deleteSlot('${day}', ${slotIdx})">Изтрий</button>
                         </div>
                     `).join('')}
                 </div>
-            `).join('');
+            `).join('')}
+            <button class="btn" onclick="addNewSchedule()" style="margin-bottom: 15px;">+ Добави Тренировка</button>
+            <br>
+            <button class="btn" onclick="saveSchedule()" style="width: 100%; margin-top: 10px; background: #27ae60;">✓ Потвърди Промените</button>`;
         }
 
-        function updateSlot(day, idx, field, value) {
-            if (field === 'price') value = parseInt(value);
-            schedule[day][idx][field] = value;
-            loadScheduleEdit();
+        function saveCapacity() {
+            const val = parseInt(document.getElementById('capacityInput').value);
+            if (val > 0) {
+                localStorage.setItem('capacity', val);
+                alert('✓ Капацитетът е запазен: ' + val + ' места');
+                loadSchedule();
+            }
+        }
+
+        function saveSchedule() {
+            Object.entries(schedule).forEach(([day, slots]) => {
+                slots.forEach((slot, idx) => {
+                    const timeEl = document.getElementById(`slot_${day}_${idx}_time`);
+                    const classEl = document.getElementById(`slot_${day}_${idx}_class`);
+                    const priceEl = document.getElementById(`slot_${day}_${idx}_price`);
+                    if (timeEl) slot.time = timeEl.value;
+                    if (classEl) slot.class = classEl.value;
+                    if (priceEl) slot.price = parseInt(priceEl.value);
+                });
+            });
+            loadSchedule();
+            alert('✓ Графикът е запазен!');
         }
 
         function deleteSlot(day, idx) {
