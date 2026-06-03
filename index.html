@@ -352,12 +352,27 @@
                 price: document.getElementById('bookingPrice').value,
                 date: new Date().toLocaleString('bg-BG')
             };
+
+            // Запази локално
             let bookings = JSON.parse(localStorage.getItem('bookings')) || [];
             bookings.push(booking);
             localStorage.setItem('bookings', JSON.stringify(bookings));
 
-            // Изпрати браузър известие
-            sendNotification(booking);
+            // Изпрати email чрез Formspree
+            fetch('https://formspree.io/f/mvznpdwz', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    subject: '🏋️ Ново записване - ' + booking.name,
+                    ime: booking.name,
+                    telefon: booking.phone,
+                    den: booking.day,
+                    chas: booking.time,
+                    trenirovka: booking.class,
+                    cena: booking.price,
+                    data: booking.date
+                })
+            });
 
             alert('✓ Успешно записване!');
             closeBookingModal();
