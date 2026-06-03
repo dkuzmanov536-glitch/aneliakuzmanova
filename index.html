@@ -226,24 +226,22 @@
         <h2 style="text-align: center; margin-bottom: 40px;">Видове тренировки</h2>
         <div class="classes-grid">
             <div class="class-card">
-                <h3>🤸‍♀️ РГ и Мобилност</h3>
-                
+                <h3>Аеробика и Табата</h3>
                 <div class="price">5€</div>
             </div>
             <div class="class-card">
-                <h3>💃 Аеробика и Табата</h3>
-                
+                <h3>РГ и Мобилност</h3>
                 <div class="price">5€</div>
             </div>
             <div class="class-card">
-                <h3>🏋️‍♀️ Индивидуална тренировка</h3>
+                <h3>Индивидуална тренировка</h3>
                 <div class="price">10€</div>
-                <a href="viber://chat?number=%2B359879360792" class="btn" style="margin-top: 15px; width: 100%; display: block; text-align: center; text-decoration: none;">📲 Свържи се с треньора</a>
+                <a href="viber://chat?number=%2B359879360792" class="btn" style="margin-top: 15px; width: 100%; display: block; text-align: center; text-decoration: none;">Свържи се с треньора</a>
             </div>
             <div class="class-card">
-                <h3>🩺 Рехабилитационна програма</h3>
+                <h3>Рехабилитационна програма</h3>
                 <div class="price">35€</div>
-                <a href="viber://chat?number=%2B359879360792" class="btn" style="margin-top: 15px; width: 100%; display: block; text-align: center; text-decoration: none;">📲 Свържи се с треньора</a>
+                <a href="viber://chat?number=%2B359879360792" class="btn" style="margin-top: 15px; width: 100%; display: block; text-align: center; text-decoration: none;">Свържи се с треньора</a>
             </div>
         </div>
     </section>
@@ -255,12 +253,12 @@
     </section>
 
     <!-- Admin Button -->
-    <button class="btn btn-admin" onclick="openAdminPanel()" title="Админ Панел">⚙️</button>
+    <button class="btn btn-admin" onclick="openAdminPanel()" title="Админ Панел"></button>
 
     <!-- Admin Modal -->
     <div id="adminModal" class="modal">
         <div class="modal-content">
-            <span class="close-btn" onclick="closeAdminPanel()">✕</span>
+            <span class="close-btn" onclick="closeAdminPanel()"></span>
             
             <!-- Login Form -->
             <div id="loginForm">
@@ -298,7 +296,7 @@
     <!-- Booking Modal -->
     <div id="bookingModal" class="modal">
         <div class="modal-content">
-            <span class="close-btn" onclick="closeBookingModal()">✕</span>
+            <span class="close-btn" onclick="closeBookingModal()"></span>
             <h2>Запиши се за тренировка</h2>
             <form onsubmit="submitBooking(event)">
                 <label>Име:</label>
@@ -318,7 +316,12 @@
         </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
+        // Supabase
+        const SUPABASE_URL = 'https://icxlgvervwohjuspswly.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImljeGxndmVydndvaGp1c3Bzd2x5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA1MDA4MDAsImV4cCI6MjA5NjA3NjgwMH0.bz-4z4llSLzkc1U6s8I_esLSkQrpMNntwMUIcNH_J_U';
+        const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         // Initialize
         let schedule = {
             'Понеделник': [
@@ -347,14 +350,28 @@
             ]
         };
 
-        // Load schedule
+        // Supabase функции
+        let allBookings = [];
+        let currentCapacity = 10;
+
+        async function loadData() {
+            // Зареди капацитет
+            const { data: cap } = await sb.from('capacity').select('value').single();
+            if (cap) currentCapacity = cap.value;
+
+            // Зареди записвания
+            const { data: bk } = await sb.from('bookings').select('*');
+            if (bk) allBookings = bk;
+
+            loadSchedule();
+        }
+
         function getBookingsCount(day, time) {
-            const bookings = JSON.parse(localStorage.getItem('bookings')) || [];
-            return bookings.filter(b => b.day === day && b.time === time).length;
+            return allBookings.filter(b => b.day === day && b.time === time).length;
         }
 
         function getCapacity() {
-            return parseInt(localStorage.getItem('capacity')) || 10;
+            return currentCapacity;
         }
 
         function loadSchedule() {
@@ -401,49 +418,31 @@
             document.getElementById('bookingModal').classList.remove('active');
         }
 
-        function submitBooking(e) {
+        async function submitBooking(e) {
             e.preventDefault();
             const booking = {
-                id: Date.now(),
                 name: document.getElementById('bookingName').value,
                 phone: document.getElementById('bookingPhone').value,
                 day: document.getElementById('bookingDay').value,
                 time: document.getElementById('bookingTime').value,
                 class: document.getElementById('bookingClass').value,
-                price: document.getElementById('bookingPrice').value,
-                date: new Date().toLocaleString('bg-BG')
+                price: document.getElementById('bookingPrice').value
             };
-
-            // Запази локално
-            let bookings = JSON.parse(localStorage.getItem('bookings')) || [];
-            bookings.push(booking);
-            localStorage.setItem('bookings', JSON.stringify(bookings));
-
-            // Изпрати email чрез Formspree
+            const { error } = await sb.from('bookings').insert([booking]);
+            if (error) { alert('Грешка при записване!'); return; }
+            allBookings.push(booking);
             const formData = new FormData();
-            formData.append('Име', booking.name);
+            formData.append('Ime', booking.name);
             formData.append('Телефон', booking.phone);
             formData.append('Ден', booking.day);
             formData.append('Час', booking.time);
             formData.append('Тренировка', booking.class);
             formData.append('Цена', booking.price);
-            formData.append('Дата', booking.date);
-
-            // Изпрати до Димитър
-            fetch('https://formspree.io/f/mvznpyer', {
-                method: 'POST',
-                body: formData,
-                headers: { 'Accept': 'application/json' }
-            });
-
-            // Изпрати до Анелия
-            fetch('https://formspree.io/f/xqeozjgr', {
-                method: 'POST',
-                body: formData,
-                headers: { 'Accept': 'application/json' }
-            });
-
-            alert('✓ Успешно записване!');
+            formData.append('Дата', new Date().toLocaleString('bg-BG'));
+            fetch('https://formspree.io/f/mvznpyer', { method: 'POST', body: formData, headers: { 'Accept': 'application/json' } });
+            fetch('https://formspree.io/f/xqeozjgr', { method: 'POST', body: formData, headers: { 'Accept': 'application/json' } });
+            alert('Успешно записване!');
+            loadSchedule();
             closeBookingModal();
             e.target.reset();
         }
@@ -453,7 +452,7 @@
             if ('Notification' in window) {
                 Notification.requestPermission().then(permission => {
                     if (permission === 'granted') {
-                        new Notification('🔔 FitFlow известия включени!', {
+                        new Notification('FitFlow известия включени!', {
                             body: 'Ще получавате известия при нови записвания.',
                             icon: 'https://cdn-icons-png.flaticon.com/512/2936/2936886.png'
                         });
@@ -465,7 +464,7 @@
         // Изпраща известие при ново записване
         function sendNotification(booking) {
             if ('Notification' in window && Notification.permission === 'granted') {
-                new Notification('🏋️ Ново записване!', {
+                new Notification('Ново записване!', {
                     body: `${booking.name} | ${booking.day} ${booking.time} | ${booking.class} | ${booking.price}`,
                     icon: 'https://cdn-icons-png.flaticon.com/512/2936/2936886.png',
                     vibrate: [200, 100, 200]
@@ -493,7 +492,7 @@
                 document.getElementById('loginForm').style.display = 'none';
                 document.getElementById('adminDash').style.display = 'block';
             } else {
-                alert('❌ Грешна парола!');
+                alert(' Грешна парола!');
                 document.getElementById('password').value = '';
             }
         }
@@ -505,31 +504,30 @@
             event.target.classList.add('active');
         }
 
-        function loadBookingsList() {
-            const bookings = JSON.parse(localStorage.getItem('bookings')) || [];
+        async function loadBookingsList() {
+            const { data } = await sb.from('bookings').select('*').order('created_at', { ascending: false });
+            allBookings = data || [];
             const list = document.getElementById('bookingsList');
-            if (bookings.length === 0) {
+            if (allBookings.length === 0) {
                 list.innerHTML = '<div class="empty">Няма записания</div>';
                 return;
             }
-            list.innerHTML = bookings.map(b => `
+            list.innerHTML = allBookings.map(b => `
                 <div class="booking-item">
-                    <strong>👤 ${b.name}</strong>
-                    <small>📞 ${b.phone}</small>
+                    <strong>${b.name}</strong>
+                    <small>${b.phone}</small>
                     <small>${b.day} - ${b.time}</small>
                     <small>${b.class} (${b.price})</small>
-                    <small style="color: #999;">Записано: ${b.date}</small>
+                    <small style="color: #999;">${b.created_at ? new Date(b.created_at).toLocaleString('bg-BG') : ''}</small>
                     <button class="delete-btn" onclick="deleteBooking(${b.id})">Изтрий</button>
                 </div>
             `).join('');
         }
 
-        function deleteBooking(id) {
+        async function deleteBooking(id) {
             if (confirm('Сигурен ли си?')) {
-                let bookings = JSON.parse(localStorage.getItem('bookings')) || [];
-                bookings = bookings.filter(b => b.id !== id);
-                localStorage.setItem('bookings', JSON.stringify(bookings));
-                loadBookingsList();
+                await sb.from('bookings').delete().eq('id', id);
+                await loadBookingsList();
             }
         }
 
@@ -538,7 +536,7 @@
             const list = document.getElementById('scheduleEditList');
             list.innerHTML = `
                 <div style="background: #fff3cd; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
-                    <h4 style="margin-bottom: 10px;">⚙️ Капацитет на залата</h4>
+                    <h4 style="margin-bottom: 10px;"> Капацитет на залата</h4>
                     <div style="display: flex; gap: 10px; align-items: center;">
                         <input type="number" id="capacityInput" value="${capacity}" min="1" style="width: 80px; padding: 8px; border: 1px solid #ddd; border-radius: 5px;">
                         <span>места</span>
@@ -560,14 +558,15 @@
             `).join('')}
             <button class="btn" onclick="addNewSchedule()" style="margin-bottom: 15px;">+ Добави Тренировка</button>
             <br>
-            <button class="btn" onclick="saveSchedule()" style="width: 100%; margin-top: 10px; background: #27ae60;">✓ Потвърди Промените</button>`;
+            <button class="btn" onclick="saveSchedule()" style="width: 100%; margin-top: 10px; background: #27ae60;"> Потвърди Промените</button>`;
         }
 
-        function saveCapacity() {
+        async function saveCapacity() {
             const val = parseInt(document.getElementById('capacityInput').value);
             if (val > 0) {
-                localStorage.setItem('capacity', val);
-                alert('✓ Капацитетът е запазен: ' + val + ' места');
+                await sb.from('capacity').update({ value: val }).eq('id', 1);
+                currentCapacity = val;
+                alert('Капацитетът е запазен: ' + val + ' места');
                 loadSchedule();
             }
         }
@@ -584,7 +583,7 @@
                 });
             });
             loadSchedule();
-            alert('✓ Графикът е запазен!');
+            alert(' Графикът е запазен!');
         }
 
         function deleteSlot(day, idx) {
@@ -593,9 +592,9 @@
                 if (schedule[day] && schedule[day][idx]) {
                     schedule[day].splice(idx, 1);
                     loadScheduleEdit();
-                    alert('✓ Тренировката е изтрита!');
+                    alert(' Тренировката е изтрита!');
                 } else {
-                    alert('❌ Грешка при изтриване!');
+                    alert(' Грешка при изтриване!');
                 }
             }
         }
@@ -610,12 +609,12 @@
                 if (!schedule[day]) schedule[day] = [];
                 schedule[day].push({ time, class: cls, price });
                 loadScheduleEdit();
-                alert('✓ Добавено!');
+                alert(' Добавено!');
             }
         }
 
         // Initialize
-        loadSchedule();
+        loadData();
         requestNotificationPermission();
 
         function openContactTrainer(type, price) {
@@ -648,14 +647,14 @@
             })
             .then(res => res.json())
             .then(data => {
-                alert('✓ Съобщението е изпратено! Треньорът ще се свърже с вас скоро.');
+                alert(' Съобщението е изпратено! Треньорът ще се свърже с вас скоро.');
                 document.getElementById('contactName').value = '';
                 document.getElementById('contactPhone').value = '';
                 document.getElementById('contactMessage').value = '';
                 closeContactTrainer();
             })
             .catch(err => {
-                alert('✓ Съобщението е изпратено!');
+                alert(' Съобщението е изпратено!');
                 closeContactTrainer();
             });
         }
@@ -663,7 +662,7 @@
     <!-- Contact Trainer Modal -->
     <div id="contactTrainerModal" class="modal">
         <div class="modal-content">
-            <span class="close-btn" onclick="closeContactTrainer()">✕</span>
+            <span class="close-btn" onclick="closeContactTrainer()"></span>
             <h2>Свържи се с треньора</h2>
             <p id="contactTrainerInfo" style="margin: 15px 0; color: var(--primary); font-weight: bold;"></p>
             <form onsubmit="submitContactTrainer(event)">
