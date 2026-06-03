@@ -197,13 +197,13 @@
             </div>
             <div class="class-card">
                 <h3>🏋️‍♀️ Индивидуална тренировка</h3>
-                
                 <div class="price">10€</div>
+                <a href="viber://chat?number=%2B359879360792" class="btn" style="margin-top: 15px; width: 100%; display: block; text-align: center; text-decoration: none;">📲 Свържи се с треньора</a>
             </div>
             <div class="class-card">
                 <h3>🩺 Рехабилитационна програма</h3>
-                
                 <div class="price">35€</div>
+                <a href="viber://chat?number=%2B359879360792" class="btn" style="margin-top: 15px; width: 100%; display: block; text-align: center; text-decoration: none;">📲 Свържи се с треньора</a>
             </div>
         </div>
     </section>
@@ -287,11 +287,11 @@
             ],
             'Вторник': [
                 { time: '10:00', class: 'Табата', price: 5 },
-                { time: '18:00', class: 'Индивидуална тренировка', price: 10 }
+                
             ],
             'Сряда': [
                 { time: '09:00', class: 'РГ и Мобилност', price: 5 },
-                { time: '18:30', class: 'Индивидуална тренировка', price: 10 }
+                
             ],
             'Четвъртък': [
                 { time: '10:00', class: 'РГ и Мобилност', price: 5 },
@@ -303,7 +303,7 @@
             ],
             'Събота': [
                 { time: '10:00', class: 'Табата', price: 5 },
-                { time: '12:00', class: 'Индивидуална тренировка', price: 10 }
+                
             ]
         };
 
@@ -520,6 +520,71 @@
         // Initialize
         loadSchedule();
         requestNotificationPermission();
+
+        function openContactTrainer(type, price) {
+            document.getElementById('contactTrainerInfo').textContent = type + ' - ' + price;
+            document.getElementById('contactTrainerModal').classList.add('active');
+        }
+
+        function closeContactTrainer() {
+            document.getElementById('contactTrainerModal').classList.remove('active');
+        }
+
+        function submitContactTrainer(e) {
+            e.preventDefault();
+            const name = document.getElementById('contactName').value;
+            const phone = document.getElementById('contactPhone').value;
+            const message = document.getElementById('contactMessage').value;
+            const type = document.getElementById('contactTrainerInfo').textContent;
+
+            const formData = new FormData();
+            formData.append('Тип', type);
+            formData.append('Ime', name);
+            formData.append('Телефон', phone);
+            formData.append('Съобщение', message || '-');
+            formData.append('Дата', new Date().toLocaleString('bg-BG'));
+
+            fetch('https://formspree.io/f/mvznpdwz', {
+                method: 'POST',
+                body: formData,
+                headers: { 'Accept': 'application/json' }
+            })
+            .then(res => res.json())
+            .then(data => {
+                alert('✓ Съобщението е изпратено! Треньорът ще се свърже с вас скоро.');
+                document.getElementById('contactName').value = '';
+                document.getElementById('contactPhone').value = '';
+                document.getElementById('contactMessage').value = '';
+                closeContactTrainer();
+            })
+            .catch(err => {
+                alert('✓ Съобщението е изпратено!');
+                closeContactTrainer();
+            });
+        }
     </script>
+    <!-- Contact Trainer Modal -->
+    <div id="contactTrainerModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeContactTrainer()">✕</span>
+            <h2>Свържи се с треньора</h2>
+            <p id="contactTrainerInfo" style="margin: 15px 0; color: var(--primary); font-weight: bold;"></p>
+            <form onsubmit="submitContactTrainer(event)">
+                <label>Ime:</label>
+                <input type="text" id="contactName" required>
+                <label>Телефон:</label>
+                <input type="tel" id="contactPhone" required>
+                <label>Съобщение:</label>
+                <input type="text" id="contactMessage" placeholder="Напиши съобщение (по желание)">
+                <button type="submit" class="btn" style="width: 100%; margin-top: 20px;">Изпрати</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer style="background: #1A1A1D; color: white; text-align: center; padding: 20px;">
+        <p style="opacity: 0.6; font-size: 0.9rem;">Изработка: Dimitar Kuzmanov</p>
+    </footer>
+
 </body>
 </html>
