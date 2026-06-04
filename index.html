@@ -333,7 +333,10 @@
                 <input type="text" id="bookingClass" readonly>
                 <label>Цена:</label>
                 <input type="text" id="bookingPrice" readonly>
-                <button type="submit" class="btn" style="width: 100%; margin-top: 20px;">Потвърди</button>
+                <button type="submit" class="btn" style="width: 100%; margin-top: 20px;" onclick="setPayment('на място')">Плати на място</button>
+                <button type="button" class="btn" style="width: 100%; margin-top: 10px; background: #1a1a2e;" onclick="payRevolut()">Плати с Revolut</button>
+                <p style="color:#e74c3c; font-size:0.85rem; margin-top:10px; text-align:center;">⚠️ Закупеното не подлежи на възстановяване!</p>
+                <input type="hidden" id="bookingPayment" value="на място">
             </form>
         </div>
     </div>
@@ -471,7 +474,8 @@
                 day: document.getElementById('bookingDay').value,
                 time: document.getElementById('bookingTime').value,
                 class: document.getElementById('bookingClass').value,
-                price: document.getElementById('bookingPrice').value
+                price: document.getElementById('bookingPrice').value,
+                payment: document.getElementById('bookingPayment').value || 'на място'
             };
             const { error } = await sb.from('bookings').insert([booking]);
             if (error) { alert('Грешка при записване!'); return; }
@@ -672,6 +676,30 @@
             }
         }
 
+        function setPayment(type) {
+            document.getElementById('bookingPayment').value = type;
+        }
+
+        function payRevolut() {
+            const price = document.getElementById('bookingPrice').value.replace('€', '').trim();
+            const cls = document.getElementById('bookingClass').value;
+            const name = document.getElementById('bookingName').value;
+            const phone = document.getElementById('bookingPhone').value;
+
+            if (!name || !phone) {
+                alert('Моля попълни Ime и Телефон!');
+                return;
+            }
+
+            document.getElementById('bookingPayment').value = 'Revolut';
+            const desc = encodeURIComponent(`Тренировка: ${cls}`);
+            const revolut = `https://revolut.me/0879360792?amount=${price}&currency=EUR&description=${desc}`;
+            window.open(revolut, '_blank');
+
+            // Запиши записването
+            document.querySelector('#bookingModal form').dispatchEvent(new Event('submit'));
+        }
+
         let lastBooking = {};
 
         // Видео функции
@@ -845,6 +873,49 @@
             </form>
         </div>
     </div>
+
+    <!-- Cards Section -->
+    <section id="cards" style="padding: 60px 20px; background: var(--light);">
+        <div class="container">
+            <h2 style="text-align:center; margin-bottom:10px;">Карти за Тренировки</h2>
+            <p style="text-align:center; color:#666; margin-bottom:40px;">Спести с наша карта — плати веднъж, тренирай повече!</p>
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px,1fr)); gap:30px; max-width:700px; margin:0 auto;">
+
+                <!-- Card 6 -->
+                <div style="background:white; border-radius:20px; padding:40px 30px; text-align:center; box-shadow:0 10px 40px rgba(0,0,0,0.1); border-top:5px solid var(--primary);">
+                    <h3 style="font-size:1.5rem; margin-bottom:15px;">6 Тренировки</h3>
+                    <div style="font-size:3rem; font-weight:bold; color:var(--primary); margin:20px 0;">20€</div>
+                    <ul style="list-style:none; margin:20px 0; text-align:left;">
+                        <li style="padding:8px 0; border-bottom:1px solid #eee;">✓ 6 групови тренировки</li>
+                        <li style="padding:8px 0; border-bottom:1px solid #eee;">✓ Валидност 1 месец</li>
+                        <li style="padding:8px 0;">✓ Всички видове класове</li>
+                    </ul>
+                    <a href="https://revolut.me/pay/0879360792?amount=20&currency=EUR&description=Карта+6+тренировки" target="_blank" class="btn" style="display:block; text-align:center; text-decoration:none; padding:15px; margin-top:20px; font-size:1rem;">
+                        Плати с Revolut
+                    </a>
+                    <p style="color:#e74c3c; font-size:0.8rem; margin-top:10px; text-align:center;">⚠️ Закупеното не подлежи на възстановяване!</p>
+                </div>
+
+                <!-- Card 12 -->
+                <div style="background:linear-gradient(135deg, var(--primary), var(--secondary)); border-radius:20px; padding:40px 30px; text-align:center; box-shadow:0 10px 40px rgba(255,107,53,0.3); color:white; transform:scale(1.03);">
+                    <div style="background:white; color:var(--primary); display:inline-block; padding:5px 15px; border-radius:20px; font-size:0.85rem; font-weight:bold; margin-bottom:15px;">НАЙ-ПОПУЛЯРНА</div>
+                    <h3 style="font-size:1.5rem; margin-bottom:15px; color:white;">12 Тренировки</h3>
+                    <div style="font-size:3rem; font-weight:bold; color:white; margin:20px 0;">35€</div>
+                    <ul style="list-style:none; margin:20px 0; text-align:left;">
+                        <li style="padding:8px 0; border-bottom:1px solid rgba(255,255,255,0.3);">✓ 12 групови тренировки</li>
+                        <li style="padding:8px 0; border-bottom:1px solid rgba(255,255,255,0.3);">✓ Валидност 1 месец</li>
+                        <li style="padding:8px 0; border-bottom:1px solid rgba(255,255,255,0.3);">✓ Всички видове класове</li>
+                        <li style="padding:8px 0;">✓ Спестяваш 25%</li>
+                    </ul>
+                    <a href="https://revolut.me/pay/0879360792?amount=35&currency=EUR&description=Карта+12+тренировки" target="_blank" style="display:block; text-align:center; text-decoration:none; padding:15px; margin-top:20px; font-size:1rem; background:white; color:var(--primary); border-radius:8px; font-weight:bold;">
+                        Плати с Revolut
+                    </a>
+                    <p style="color:rgba(255,255,255,0.8); font-size:0.8rem; margin-top:10px; text-align:center;">⚠️ Закупеното не подлежи на възстановяване!</p>
+                </div>
+
+            </div>
+        </div>
+    </section>
 
     <!-- Videos Section -->
     <section id="videos" style="padding: 60px 20px; background: #1A1A1D;">
