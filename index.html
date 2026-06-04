@@ -587,12 +587,6 @@
             document.getElementById('cardModal').classList.remove('active');
         }
 
-         тренировки`);
-            window.open(`https://revolut.me/0879360792?amount=${currentCardPrice}&currency=EUR&description=${desc}`, '_blank');
-            document.getElementById('cardPageContent').style.display = 'block';
-            document.getElementById('cardPageFail').style.display = 'none';
-        }
-
         function closeCardThankYou() {
             document.getElementById('cardThankYouPage').style.display = 'none'; document.getElementById('cardThankYouPage').style.pointerEvents = 'none';
         }
@@ -994,18 +988,6 @@
         function setPayment(type) {
             document.getElementById('bookingPayment').value = type;
         }
-
-        
-
-            
-            const desc = encodeURIComponent(`Тренировка: ${cls}`);
-            const revolut = `https://revolut.me/0879360792?amount=${price}&currency=EUR&description=${desc}`;
-            
-
-            // Запиши записването
-            document.querySelector('#bookingModal form').dispatchEvent(new Event('submit'));
-        }
-
         let lastBooking = {};
 
         // Видео функции
