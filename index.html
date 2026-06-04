@@ -219,6 +219,13 @@
     <div class="hero">
         <h1>aneliakuzmanova.com</h1>
         <p>Трансформирай тялото си с професионални тренировки</p>
+        <div style="margin-top:25px;">
+            <button id="authBtn" onclick="openAuthModal()" style="background:white; color:var(--primary); border:none; padding:12px 30px; border-radius:25px; font-weight:bold; cursor:pointer; font-size:1rem;">Вход / Регистрация</button>
+            <span id="userInfo" style="display:none; color:white; margin-left:15px;">
+                👤 <span id="userName"></span>
+                <button onclick="logout()" style="background:transparent; color:white; border:1px solid white; padding:5px 15px; border-radius:15px; cursor:pointer; margin-left:10px; font-size:0.85rem;">Изход</button>
+            </span>
+        </div>
     </div>
 
     <!-- Classes -->
@@ -289,6 +296,7 @@
                     <button class="tab-btn active" onclick="switchTab('bookings')">Записани Хора</button>
                     <button class="tab-btn" onclick="switchTab('editSchedule')">Редактирай График</button>
                     <button class="tab-btn" onclick="switchTab('videosTab')">Видеа</button>
+                    <button class="tab-btn" onclick="switchTab('cardsTab'); loadCardsAdmin()">Карти</button>
                 </div>
 
                 <!-- Bookings Tab -->
@@ -311,6 +319,12 @@
                     <button class="btn" onclick="uploadVideo()" style="width:100%; margin-bottom:20px;">Качи Видео</button>
                     <div id="adminVideosList"></div>
                 </div>
+
+                <!-- Cards Tab -->
+                <div id="cardsTab" class="tab-content">
+                    <h3 style="margin-bottom:20px;">Картодържатели</h3>
+                    <div id="cardsAdminList"></div>
+                </div>
             </div>
         </div>
     </div>
@@ -324,7 +338,7 @@
                 <label>Име:</label>
                 <input type="text" id="bookingName" required>
                 <label>Телефон:</label>
-                <input type="tel" id="bookingPhone" required>
+                <input type="tel" id="bookingPhone" required onblur="checkCardOnPhone()">
                 <label>Ден:</label>
                 <input type="text" id="bookingDay" readonly>
                 <label>Час:</label>
@@ -333,10 +347,17 @@
                 <input type="text" id="bookingClass" readonly>
                 <label>Цена:</label>
                 <input type="text" id="bookingPrice" readonly>
-                <button type="submit" class="btn" style="width: 100%; margin-top: 20px;" onclick="setPayment('на място')">Плати на място</button>
-                <button type="button" class="btn" style="width: 100%; margin-top: 10px; background: #1a1a2e;" onclick="payRevolut()">Плати с Revolut</button>
+                <div id="cardInfo" style="display:none; background:#e8f5e9; padding:10px; border-radius:8px; margin-top:10px; color:#27ae60; font-weight:bold;"></div>
+                <div id="paymentButtons">
+                    <button type="submit" class="btn" style="width: 100%; margin-top: 20px;" onclick="setPayment('на място')">Плати на място</button>
+                    <button type="button" class="btn" style="width: 100%; margin-top: 10px; background: #1a1a2e;" onclick="payRevolut()">Плати с Revolut</button>
+                </div>
+                <div id="cardPayButton" style="display:none;">
+                    <button type="submit" class="btn" style="width: 100%; margin-top: 20px; background:#27ae60;" onclick="setPayment('карта')">Потвърди (с карта)</button>
+                </div>
                 <p style="color:#e74c3c; font-size:0.85rem; margin-top:10px; text-align:center;">⚠️ Неявяване на запазена и платена тренировка не подлежи на възстановяване.</p>
                 <input type="hidden" id="bookingPayment" value="на място">
+                <input type="hidden" id="bookingCardId" value="">
             </form>
         </div>
     </div>
@@ -403,6 +424,234 @@
 
         function getBookingsCount(day, time) {
             return allBookings.filter(b => b.day === day && b.time === time).length;
+        }
+
+        let currentUser = null;
+
+        // Auth функции
+        function openAuthModal() {
+            document.getElementById('authModal').classList.add('active');
+        }
+
+        function closeAuthModal() {
+            document.getElementById('authModal').classList.remove('active');
+        }
+
+        function switchAuthTab(tab) {
+            document.querySelectorAll('#authModal .tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('#authModal .tab-btn').forEach(el => el.classList.remove('active'));
+            document.getElementById(tab + 'Tab').classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        async function registerUser(e) {
+            e.preventDefault();
+            const name = document.getElementById('regName').value;
+            const phone = document.getElementById('regPhone').value;
+            const email = document.getElementById('regEmail').value;
+            const password = document.getElementById('regPassword').value;
+
+            const { data, error } = await sb.auth.signUp({
+                email,
+                password,
+                options: { data: { name, phone } }
+            });
+
+            if (error) {
+                if (error.message.includes('already registered')) {
+                    alert('Този email вече е регистриран! Използвай "Вход".');
+                } else {
+                    alert('Грешка: ' + error.message);
+                }
+                return;
+            }
+            alert('✓ Регистрацията е успешна!');
+            closeAuthModal();
+        }
+
+        async function loginUser(e) {
+            e.preventDefault();
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+
+            const { data, error } = await sb.auth.signInWithPassword({ email, password });
+            if (error) { alert('Грешна парола или email!'); return; }
+            closeAuthModal();
+        }
+
+        async function logout() {
+            await sb.auth.signOut();
+            currentUser = null;
+            updateAuthUI(null);
+        }
+
+        function updateAuthUI(user) {
+            if (user) {
+                currentUser = user;
+                document.getElementById('authBtn').style.display = 'none';
+                document.getElementById('userInfo').style.display = 'inline';
+                document.getElementById('userName').textContent = user.user_metadata?.name || user.email;
+                // Попълни автоматично но позволи редакция
+                if (user.user_metadata?.name) document.getElementById('bookingName').value = user.user_metadata.name;
+                if (user.user_metadata?.phone) document.getElementById('bookingPhone').value = user.user_metadata.phone;
+            } else {
+                currentUser = null;
+                document.getElementById('authBtn').style.display = 'inline-block';
+                document.getElementById('userInfo').style.display = 'none';
+                // Изчисти полетата
+                document.getElementById('bookingName').value = '';
+                document.getElementById('bookingPhone').value = '';
+            }
+        }
+
+        // Следи промени в auth
+        sb.auth.onAuthStateChange((event, session) => {
+            updateAuthUI(session?.user || null);
+        });
+
+        // Проверка на карта при въвеждане на телефон
+        async function checkCardOnPhone() {
+            const phone = document.getElementById('bookingPhone').value;
+            if (!phone) return;
+
+            const today = new Date().toISOString().split('T')[0];
+            const { data } = await sb.from('cards')
+                .select('*')
+                .eq('phone', phone)
+                .gte('expires_at', today)
+                .order('created_at', { ascending: false })
+                .limit(1);
+
+            const card = data && data.length > 0 ? data[0] : null;
+            const remaining = card ? card.trainings_total - card.trainings_used : 0;
+
+            if (card && remaining > 0) {
+                document.getElementById('cardInfo').style.display = 'block';
+                document.getElementById('cardInfo').textContent = `✓ Имаш активна карта! Оставащи тренировки: ${remaining}`;
+                document.getElementById('paymentButtons').style.display = 'none';
+                document.getElementById('cardPayButton').style.display = 'block';
+                document.getElementById('bookingCardId').value = card.id;
+            } else {
+                document.getElementById('cardInfo').style.display = 'none';
+                document.getElementById('paymentButtons').style.display = 'block';
+                document.getElementById('cardPayButton').style.display = 'none';
+                document.getElementById('bookingCardId').value = '';
+            }
+        }
+
+        async function updateCardUsed(cardId) {
+            const { data } = await sb.from('cards').select('trainings_used').eq('id', cardId).single();
+            if (data) {
+                await sb.from('cards').update({ trainings_used: data.trainings_used + 1 }).eq('id', cardId);
+            }
+        }
+
+        let currentCardType = 0;
+        let currentCardPrice = 0;
+
+        function openCardModal(type, price) {
+            currentCardType = type;
+            currentCardPrice = price;
+            document.getElementById('cardModalInfo').textContent = `Карта ${type} тренировки — ${price}€`;
+            document.getElementById('cardModal').classList.add('active');
+        }
+
+        function closeCardModal() {
+            document.getElementById('cardModal').classList.remove('active');
+        }
+
+        function closeCardThankYou() {
+            document.getElementById('cardThankYouPage').style.display = 'none';
+        }
+
+        async function submitCardPurchase(e) {
+            e.preventDefault();
+            const name = document.getElementById('cardName').value;
+            const phone = document.getElementById('cardPhone').value;
+
+            // Изчисли дата на изтичане (1 месец)
+            const expires = new Date();
+            expires.setMonth(expires.getMonth() + 1);
+            const expiresStr = expires.toISOString().split('T')[0];
+
+            // Запази в Supabase
+            const { error } = await sb.from('cards').insert([{
+                name,
+                phone,
+                card_type: `${currentCardType} тренировки`,
+                trainings_total: currentCardType,
+                trainings_used: 0,
+                expires_at: expiresStr
+            }]);
+
+            if (error) { alert('Грешка!'); return; }
+
+            closeCardModal();
+
+            // Отвори Revolut
+            const desc = encodeURIComponent(`Карта ${currentCardType} тренировки`);
+            window.open(`https://revolut.me/0879360792?amount=${currentCardPrice}&currency=EUR&description=${desc}`, '_blank');
+
+            // Покажи страница за благодарност
+            history.pushState({ cardPurchase: true }, '');
+            document.getElementById('cardThankYouPage').style.display = 'block';
+            window.scrollTo(0, 0);
+            e.target.reset();
+        }
+
+        // Скрий thank you при натискане на назад
+        window.addEventListener('popstate', function(e) {
+            document.getElementById('cardThankYouPage').style.display = 'none';
+        });
+
+        // Проверка дали клиентът има карта
+        async function checkCard(phone) {
+            const today = new Date().toISOString().split('T')[0];
+            const { data } = await sb.from('cards')
+                .select('*')
+                .eq('phone', phone)
+                .gte('expires_at', today)
+                .lt('trainings_used', sb.raw('trainings_total'))
+                .limit(1);
+            return data && data.length > 0 ? data[0] : null;
+        }
+
+        // Проверка дали е тази седмица
+        function isThisWeek(day) {
+            const days = { 'Понеделник': 1, 'Вторник': 2, 'Сряда': 3, 'Четвъртък': 4, 'Петък': 5, 'Събота': 6, 'Неделя': 0 };
+            const today = new Date();
+            const todayDay = today.getDay();
+            const targetDay = days[day];
+            let diff = targetDay - todayDay;
+            if (diff < 0) diff += 7;
+            // В неделя (0) може следваща седмица
+            if (todayDay === 0) return true;
+            return diff <= 6;
+        }
+
+        async function loadCardsAdmin() {
+            const today = new Date().toISOString().split('T')[0];
+            const { data } = await sb.from('cards').select('*').order('created_at', { ascending: false });
+            const list = document.getElementById('cardsAdminList');
+
+            if (!data || data.length === 0) {
+                list.innerHTML = '<div class="empty">Няма картодържатели</div>';
+                return;
+            }
+
+            list.innerHTML = data.map(card => {
+                const expired = card.expires_at < today;
+                const remaining = card.trainings_total - card.trainings_used;
+                return `
+                <div class="booking-item" style="border-left-color: ${expired ? '#e74c3c' : '#27ae60'}">
+                    <strong>${card.name}</strong>
+                    <small>📞 ${card.phone}</small>
+                    <small>Карта: ${card.card_type}</small>
+                    <small>Тренировки: ${card.trainings_used}/${card.trainings_total} (остават ${remaining})</small>
+                    <small>Валидна до: ${card.expires_at} ${expired ? '❌ ИЗТЕКЛА' : '✓'}</small>
+                    <small style="color:#999;">Записани дни: ${card.booked_days || 'Не е избрал тренировка'}</small>
+                </div>`;
+            }).join('');
         }
 
         function getNextDate(dayName) {
@@ -480,6 +729,10 @@
             const { error } = await sb.from('bookings').insert([booking]);
             if (error) { alert('Грешка при записване!'); return; }
             allBookings.push(booking);
+
+            // Обнови карта ако е използвана
+            const cardId = document.getElementById('bookingCardId').value;
+            if (cardId) await updateCardUsed(cardId);
             const formData = new FormData();
             formData.append('_subject', 'Ново записване от ' + booking.name);
             formData.append('_replyto', 'noreply@aneliakuzmanova.com');
@@ -775,6 +1028,9 @@
         loadData();
         loadVideos();
         requestNotificationPermission();
+        // Скрий thank you страниците при зареждане
+        document.getElementById('cardThankYouPage').style.display = 'none';
+        document.getElementById('thankYouPage').style.display = 'none';
 
         function openContactTrainer(type, price) {
             document.getElementById('contactTrainerInfo').textContent = type + ' - ' + price;
@@ -856,6 +1112,73 @@
             window.open(googleUrl, '_blank');
         }
     </script>
+    <!-- Auth Modal -->
+    <div id="authModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeAuthModal()">✕</span>
+
+            <div class="tabs" style="margin-bottom:25px;">
+                <button class="tab-btn active" onclick="switchAuthTab('login')">Вход</button>
+                <button class="tab-btn" onclick="switchAuthTab('register')">Регистрация</button>
+            </div>
+
+            <!-- Login -->
+            <div id="loginTab" class="tab-content active">
+                <h2 style="margin-bottom:20px;">Вход</h2>
+                <form onsubmit="loginUser(event)">
+                    <label>Email:</label>
+                    <input type="email" id="loginEmail" required placeholder="email@example.com">
+                    <label>Парола:</label>
+                    <input type="password" id="loginPassword" required placeholder="Парола">
+                    <button type="submit" class="btn" style="width:100%; margin-top:20px;">Влез</button>
+                </form>
+            </div>
+
+            <!-- Register -->
+            <div id="registerTab" class="tab-content">
+                <h2 style="margin-bottom:20px;">Регистрация</h2>
+                <form onsubmit="registerUser(event)">
+                    <label>Ime:</label>
+                    <input type="text" id="regName" required>
+                    <label>Телефон:</label>
+                    <input type="tel" id="regPhone" required>
+                    <label>Email:</label>
+                    <input type="email" id="regEmail" required placeholder="email@example.com">
+                    <label>Парола:</label>
+                    <input type="password" id="regPassword" required placeholder="Минимум 6 символа">
+                    <button type="submit" class="btn" style="width:100%; margin-top:20px;">Регистрирай се</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Card Purchase Modal -->
+    <div id="cardModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeCardModal()">✕</span>
+            <h2>Купи Карта</h2>
+            <p id="cardModalInfo" style="color:var(--primary); font-weight:bold; margin-bottom:20px;"></p>
+            <form onsubmit="submitCardPurchase(event)">
+                <label>Ime:</label>
+                <input type="text" id="cardName" required>
+                <label>Телефон:</label>
+                <input type="tel" id="cardPhone" required>
+                <button type="submit" class="btn" style="width:100%; margin-top:20px;">Продължи към Revolut</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Card Purchase Thank You -->
+    <div id="cardThankYouPage" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:white; z-index:2000; overflow-y:auto;">
+        <div style="max-width:600px; margin:0 auto; padding:60px 20px; text-align:center;">
+            <div style="font-size:5rem; margin-bottom:20px;">✓</div>
+            <h1 style="color:var(--primary); font-size:2rem; margin-bottom:20px;">Плащането е изпратено!</h1>
+            <p style="font-size:1.1rem; color:#333; margin-bottom:20px;">Ще получиш картата на място при първото посещение.</p>
+            <p style="font-size:1rem; color:#666; margin-bottom:30px;">Запиши се за тренировка от графика — с картата не е нужно да плащаш повторно.</p>
+            <button class="btn" style="width:100%; padding:15px;" onclick="closeCardThankYou()">Към началната страница</button>
+        </div>
+    </div>
+
     <!-- Contact Trainer Modal -->
     <div id="contactTrainerModal" class="modal">
         <div class="modal-content">
@@ -890,9 +1213,9 @@
                         <li style="padding:8px 0; border-bottom:1px solid #eee;">✓ Валидност 1 месец</li>
                         <li style="padding:8px 0;">✓ Всички видове класове</li>
                     </ul>
-                    <a href="https://revolut.me/pay/0879360792?amount=20&currency=EUR&description=Карта+6+тренировки" target="_blank" class="btn" style="display:block; text-align:center; text-decoration:none; padding:15px; margin-top:20px; font-size:1rem;">
-                        Плати с Revolut
-                    </a>
+                    <button onclick="openCardModal(6, 20)" class="btn" style="display:block; text-align:center; width:100%; padding:15px; margin-top:20px; font-size:1rem;">
+                        Купи с Revolut
+                    </button>
                     <p style="color:#e74c3c; font-size:0.8rem; margin-top:10px; text-align:left;">
 ⚠️ Неявяване на запазена и платена тренировка не подлежи на възстановяване.<br><br>
 ⚠️ След изтичане на валидността картите се анулират, а неизползваните тренировки и средства не се възстановяват.
@@ -910,9 +1233,9 @@
                         <li style="padding:8px 0; border-bottom:1px solid rgba(255,255,255,0.3);">✓ Всички видове класове</li>
                         <li style="padding:8px 0;">✓ Спестяваш 25%</li>
                     </ul>
-                    <a href="https://revolut.me/pay/0879360792?amount=35&currency=EUR&description=Карта+12+тренировки" target="_blank" style="display:block; text-align:center; text-decoration:none; padding:15px; margin-top:20px; font-size:1rem; background:white; color:var(--primary); border-radius:8px; font-weight:bold;">
-                        Плати с Revolut
-                    </a>
+                    <button onclick="openCardModal(12, 35)" style="display:block; text-align:center; width:100%; padding:15px; margin-top:20px; font-size:1rem; background:white; color:var(--primary); border-radius:8px; font-weight:bold; border:none; cursor:pointer;">
+                        Купи с Revolut
+                    </button>
                     <p style="color:rgba(255,255,255,0.9); font-size:0.8rem; margin-top:10px; text-align:left;">
 ⚠️ Неявяване на запазена и платена тренировка не подлежи на възстановяване.<br><br>
 ⚠️ След изтичане на валидността картите се анулират, а неизползваните тренировки и средства не се възстановяват.
