@@ -352,8 +352,8 @@
                 <input type="text" id="bookingPrice" readonly>
                 <div id="cardInfo" style="display:none; background:#e8f5e9; padding:10px; border-radius:8px; margin-top:10px; color:#27ae60; font-weight:bold;"></div>
                 <div id="paymentButtons">
-                    <button type="submit" class="btn" style="width: 100%; margin-top: 20px;" onclick="setPayment('на място')">Плати на място</button>
-                    <button type="button" class="btn" style="width: 100%; margin-top: 10px; background: #1a1a2e;" onclick="payRevolut()">Плати с Revolut</button>
+                    <button type="submit" class="btn" style="width: 100%; margin-top: 20px;" >Плати на място</button>
+                    
                 </div>
                 <div id="cardPayButton" style="display:none;">
                     <button type="submit" class="btn" style="width: 100%; margin-top: 20px; background:#27ae60;" onclick="setPayment('карта')">Потвърди (с карта)</button>
@@ -587,8 +587,7 @@
             document.getElementById('cardModal').classList.remove('active');
         }
 
-        function retryPayment() {
-            const desc = encodeURIComponent(`Карта ${currentCardType} тренировки`);
+         тренировки`);
             window.open(`https://revolut.me/0879360792?amount=${currentCardPrice}&currency=EUR&description=${desc}`, '_blank');
             document.getElementById('cardPageContent').style.display = 'block';
             document.getElementById('cardPageFail').style.display = 'none';
@@ -996,21 +995,12 @@
             document.getElementById('bookingPayment').value = type;
         }
 
-        function payRevolut() {
-            const price = document.getElementById('bookingPrice').value.replace('€', '').trim();
-            const cls = document.getElementById('bookingClass').value;
-            const name = document.getElementById('bookingName').value;
-            const phone = document.getElementById('bookingPhone').value;
+        
 
-            if (!name || !phone) {
-                alert('Моля попълни Ime и Телефон!');
-                return;
-            }
-
-            document.getElementById('bookingPayment').value = 'Revolut';
+            
             const desc = encodeURIComponent(`Тренировка: ${cls}`);
             const revolut = `https://revolut.me/0879360792?amount=${price}&currency=EUR&description=${desc}`;
-            window.open(revolut, '_blank');
+            
 
             // Запиши записването
             document.querySelector('#bookingModal form').dispatchEvent(new Event('submit'));
@@ -1231,7 +1221,7 @@
                 <input type="text" id="cardName" required>
                 <label>Телефон:</label>
                 <input type="tel" id="cardPhone" required>
-                <button type="submit" class="btn" style="width:100%; margin-top:20px;">Продължи към Revolut</button>
+                <button type="submit" class="btn" style="width:100%; margin-top:20px;">Купи карта</button>
             </form>
         </div>
     </div>
