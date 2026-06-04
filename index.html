@@ -260,7 +260,7 @@
     </section>
 
     <!-- Thank You Page -->
-    <div id="thankYouPage" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:white; z-index:2000; overflow-y:auto;">
+    <div id="thankYouPage" style="display:none; pointer-events:none; position:fixed; top:0; left:0; width:100%; height:100%; background:white; z-index:2000; overflow-y:auto;">
         <div style="max-width:600px; margin:0 auto; padding:60px 20px; text-align:center;">
             <div style="font-size:5rem; margin-bottom:20px;">✓</div>
             <h1 style="font-family:Arial,sans-serif; color:#FF6B35; font-size:2rem; margin-bottom:20px;">Благодарим за записването!</h1>
@@ -338,7 +338,10 @@
                 <label>Име:</label>
                 <input type="text" id="bookingName" required>
                 <label>Телефон:</label>
-                <input type="tel" id="bookingPhone" required onblur="checkCardOnPhone()">
+                <div style="display:flex; gap:10px;">
+                    <input type="tel" id="bookingPhone" required onblur="checkCardOnPhone()" style="flex:1;">
+                    <button type="button" class="btn" onclick="checkCardOnPhone()" style="white-space:nowrap; padding:10px 15px;">Провери карта</button>
+                </div>
                 <label>Ден:</label>
                 <input type="text" id="bookingDay" readonly>
                 <label>Час:</label>
@@ -518,6 +521,7 @@
             const { data } = await sb.from('cards')
                 .select('*')
                 .eq('phone', phone)
+                .eq('active', true)
                 .gte('expires_at', today)
                 .order('created_at', { ascending: false })
                 .limit(1);
@@ -568,7 +572,7 @@
         }
 
         function closeCardThankYou() {
-            document.getElementById('cardThankYouPage').style.display = 'none';
+            document.getElementById('cardThankYouPage').style.display = 'none'; document.getElementById('cardThankYouPage').style.pointerEvents = 'none';
         }
 
         async function submitCardPurchase(e) {
@@ -576,49 +580,29 @@
             const name = document.getElementById('cardName').value;
             const phone = document.getElementById('cardPhone').value;
 
-            // Изчисли дата на изтичане (1 месец)
             const expires = new Date();
             expires.setMonth(expires.getMonth() + 1);
             const expiresStr = expires.toISOString().split('T')[0];
 
-            // Запази в Supabase
             const { error } = await sb.from('cards').insert([{
                 name,
                 phone,
                 card_type: `${currentCardType} тренировки`,
                 trainings_total: currentCardType,
                 trainings_used: 0,
-                expires_at: expiresStr
+                expires_at: expiresStr,
+                active: false
             }]);
 
             if (error) { alert('Грешка!'); return; }
 
             closeCardModal();
-
-            // Отвори Revolut
-            const desc = encodeURIComponent(`Карта ${currentCardType} тренировки`);
-            window.open(`https://revolut.me/0879360792?amount=${currentCardPrice}&currency=EUR&description=${desc}`, '_blank');
-
-            // Покажи страница за благодарност
-            sessionStorage.setItem('cardPurchased', 'true');
-            history.pushState({ cardPurchase: true }, '');
-            document.getElementById('cardThankYouPage').style.display = 'block';
+            document.getElementById('cardThankYouPage').style.display = 'block'; document.getElementById('cardThankYouPage').style.pointerEvents = 'auto';
             document.getElementById('cardPageContent').style.display = 'block';
             document.getElementById('cardPageFail').style.display = 'none';
             window.scrollTo(0, 0);
-
-            // След 3 секунди проверяваме дали прозорецът е затворен
-            const revolut = window.open(`https://revolut.me/0879360792?amount=${currentCardPrice}&currency=EUR&description=${desc}`, '_blank');
-            const checkClosed = setInterval(() => {
-                if (revolut && revolut.closed) {
-                    clearInterval(checkClosed);
-                    // Показваме неуспешно ако не е потвърдено
-                    if (!sessionStorage.getItem('paymentConfirmed')) {
-                        document.getElementById('cardPageContent').style.display = 'none';
-                        document.getElementById('cardPageFail').style.display = 'block';
-                    }
-                }
-            }, 1000);
+            e.target.reset();
+        }
 
         // Проверка дали клиентът има карта
         async function checkCard(phone) {
@@ -655,19 +639,59 @@
                 return;
             }
 
-            list.innerHTML = data.map(card => {
-                const expired = card.expires_at < today;
-                const remaining = card.trainings_total - card.trainings_used;
-                return `
-                <div class="booking-item" style="border-left-color: ${expired ? '#e74c3c' : '#27ae60'}">
+            // Раздели на чакащи активиране и активни
+            const pending = data.filter(c => c.active === false);
+            const active = data.filter(c => c.active === true);
+
+            let html = '';
+
+            if (pending.length > 0) {
+                html += `<h4 style="color:#e67e22; margin:10px 0;">⏳ Чакат активиране (${pending.length})</h4>`;
+                html += pending.map(card => `
+                <div class="booking-item" style="border-left-color:#e67e22; background:#fff8e1;">
                     <strong>${card.name}</strong>
                     <small>📞 ${card.phone}</small>
                     <small>Карта: ${card.card_type}</small>
-                    <small>Тренировки: ${card.trainings_used}/${card.trainings_total} (остават ${remaining})</small>
-                    <small>Валидна до: ${card.expires_at} ${expired ? '❌ ИЗТЕКЛА' : '✓'}</small>
-                    <small style="color:#999;">Записани дни: ${card.booked_days || 'Не е избрал тренировка'}</small>
-                </div>`;
-            }).join('');
+                    <small>Заявена на: ${new Date(card.created_at).toLocaleDateString('bg-BG')}</small>
+                    <div style="display:flex; gap:10px; margin-top:8px;">
+                        <button class="btn" style="background:#27ae60; padding:8px 15px;" onclick="toggleCard(${card.id}, true)">✓ Активирай</button>
+                        <button class="delete-btn" onclick="deleteCard(${card.id})">Изтрий</button>
+                    </div>
+                </div>`).join('');
+            }
+
+            if (active.length > 0) {
+                html += `<h4 style="color:#27ae60; margin:15px 0 10px;">✓ Активни карти (${active.length})</h4>`;
+                html += active.map(card => {
+                    const expired = card.expires_at < today;
+                    const remaining = card.trainings_total - card.trainings_used;
+                    return `
+                    <div class="booking-item" style="border-left-color:${expired ? '#e74c3c' : '#27ae60'}">
+                        <strong>${card.name}</strong>
+                        <small>📞 ${card.phone}</small>
+                        <small>Карта: ${card.card_type} | Остават: ${remaining} тренировки</small>
+                        <small>Валидна до: ${card.expires_at} ${expired ? '❌ ИЗТЕКЛА' : ''}</small>
+                        <div style="display:flex; gap:10px; margin-top:8px;">
+                            <button class="btn" style="background:#e67e22; padding:6px 12px; font-size:0.85rem;" onclick="toggleCard(${card.id}, false)">Деактивирай</button>
+                            <button class="delete-btn" onclick="deleteCard(${card.id})">Изтрий</button>
+                        </div>
+                    </div>`;
+                }).join('');
+            }
+
+            list.innerHTML = html || '<div class="empty">Няма карти</div>';
+        }
+
+        async function toggleCard(id, active) {
+            await sb.from('cards').update({ active }).eq('id', id);
+            loadCardsAdmin();
+        }
+
+        async function deleteCard(id) {
+            if (confirm('Изтрий тази карта?')) {
+                await sb.from('cards').delete().eq('id', id);
+                loadCardsAdmin();
+            }
         }
 
         function getNextDate(dayName) {
@@ -1028,12 +1052,12 @@
                 <p style="margin:8px 0;"><strong>Час:</strong> ${time}</p>
                 <p style="margin:8px 0;"><strong>Тренировка:</strong> ${cls}</p>
             `;
-            document.getElementById('thankYouPage').style.display = 'block';
+            document.getElementById('thankYouPage').style.display = 'block'; document.getElementById('thankYouPage').style.pointerEvents = 'auto';
             window.scrollTo(0, 0);
         }
 
         function closeThankYouPage() {
-            document.getElementById('thankYouPage').style.display = 'none';
+            document.getElementById('thankYouPage').style.display = 'none'; document.getElementById('thankYouPage').style.pointerEvents = 'none';
         }
 
         function addToCalendarFromThankYou() {
@@ -1045,11 +1069,11 @@
         loadVideos();
         requestNotificationPermission();
         // Скрий thank you страниците при зареждане
-        document.getElementById('cardThankYouPage').style.display = 'none';
-        document.getElementById('thankYouPage').style.display = 'none';
+        document.getElementById('cardThankYouPage').style.display = 'none'; document.getElementById('cardThankYouPage').style.pointerEvents = 'none';
+        document.getElementById('thankYouPage').style.display = 'none'; document.getElementById('thankYouPage').style.pointerEvents = 'none';
         // Изчисти sessionStorage при зареждане
         if (!sessionStorage.getItem('cardPurchased')) {
-            document.getElementById('cardThankYouPage').style.display = 'none';
+            document.getElementById('cardThankYouPage').style.display = 'none'; document.getElementById('cardThankYouPage').style.pointerEvents = 'none';
         }
         sessionStorage.removeItem('cardPurchased');
 
@@ -1190,13 +1214,13 @@
     </div>
 
     <!-- Card Purchase Thank You -->
-    <div id="cardThankYouPage" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:white; z-index:2000; overflow-y:auto;">
+    <div id="cardThankYouPage" style="display:none; pointer-events:none; position:fixed; top:0; left:0; width:100%; height:100%; background:white; z-index:2000; overflow-y:auto;">
         <div style="max-width:600px; margin:0 auto; padding:60px 20px; text-align:center;">
             <div id="cardPageContent">
                 <div style="font-size:5rem; margin-bottom:20px;">✓</div>
-                <h1 style="color:var(--primary); font-size:2rem; margin-bottom:20px;">Плащането е изпратено!</h1>
-                <p style="font-size:1.1rem; color:#333; margin-bottom:20px;">Ще получиш картата на място при първото посещение.</p>
-                <p style="font-size:1rem; color:#666; margin-bottom:30px;">Запиши се за тренировка от графика — с картата не е нужно да плащаш повторно.</p>
+                <h1 style="color:var(--primary); font-size:2rem; margin-bottom:20px;">Заявката е приета!</h1>
+                <p style="font-size:1.1rem; color:#333; margin-bottom:20px;">Плати на място при първото посещение — след плащане треньорът ще активира картата ти.</p>
+                <p style="font-size:1rem; color:#666; margin-bottom:30px;">След активиране можеш да се записваш за тренировки без допълнително плащане.</p>
             </div>
             <div id="cardPageFail" style="display:none;">
                 <div style="font-size:5rem; margin-bottom:20px;">✕</div>
@@ -1243,7 +1267,7 @@
                         <li style="padding:8px 0;">✓ Всички видове класове</li>
                     </ul>
                     <button onclick="openCardModal(6, 20)" class="btn" style="display:block; text-align:center; width:100%; padding:15px; margin-top:20px; font-size:1rem;">
-                        Купи с Revolut
+                        Купи карта
                     </button>
                     <p style="color:#e74c3c; font-size:0.8rem; margin-top:10px; text-align:left;">
 ⚠️ Неявяване на запазена и платена тренировка не подлежи на възстановяване.<br><br>
@@ -1263,7 +1287,7 @@
                         <li style="padding:8px 0;">✓ Спестяваш 25%</li>
                     </ul>
                     <button onclick="openCardModal(12, 35)" style="display:block; text-align:center; width:100%; padding:15px; margin-top:20px; font-size:1rem; background:white; color:var(--primary); border-radius:8px; font-weight:bold; border:none; cursor:pointer;">
-                        Купи с Revolut
+                        Купи карта
                     </button>
                     <p style="color:rgba(255,255,255,0.9); font-size:0.8rem; margin-top:10px; text-align:left;">
 ⚠️ Неявяване на запазена и платена тренировка не подлежи на възстановяване.<br><br>
