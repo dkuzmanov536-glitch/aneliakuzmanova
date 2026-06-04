@@ -252,6 +252,19 @@
         <div id="scheduleList"></div>
     </section>
 
+    <!-- Thank You Page -->
+    <div id="thankYouPage" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:white; z-index:2000; overflow-y:auto;">
+        <div style="max-width:600px; margin:0 auto; padding:60px 20px; text-align:center;">
+            <div style="font-size:5rem; margin-bottom:20px;">✓</div>
+            <h1 style="font-family:Arial,sans-serif; color:#FF6B35; font-size:2rem; margin-bottom:20px;">Благодарим за записването!</h1>
+            <p style="font-size:1.2rem; color:#333; margin-bottom:10px;">Очакваме ви на тренировка!</p>
+            <div id="thankYouDetails" style="background:#f5f5f5; padding:20px; border-radius:15px; margin:30px 0; text-align:left;">
+            </div>
+            <button id="calendarBtn" class="btn" style="background:#27ae60; width:100%; padding:15px; font-size:1.1rem; margin-bottom:15px;" onclick="addToCalendarFromThankYou()">Добави в Календар</button>
+            <button class="btn" style="width:100%; padding:15px; font-size:1.1rem;" onclick="closeThankYouPage()">Към началната страница</button>
+        </div>
+    </div>
+
     <!-- Admin Button -->
     <button class="btn btn-admin" onclick="openAdminPanel()" title="Админ Панел"></button>
 
@@ -314,7 +327,6 @@
                 <label>Цена:</label>
                 <input type="text" id="bookingPrice" readonly>
                 <button type="submit" class="btn" style="width: 100%; margin-top: 20px;">Потвърди</button>
-                <button type="button" class="btn" style="width: 100%; margin-top: 10px; background: #27ae60;" onclick="addToCalendar(document.getElementById('bookingDay').value, document.getElementById('bookingTime').value, document.getElementById('bookingClass').value)">Добави в Календар</button>
             </form>
         </div>
     </div>
@@ -455,9 +467,9 @@
             formData.append('Дата', new Date().toLocaleString('bg-BG'));
             fetch('https://formspree.io/f/mvznpyer', { method: 'POST', body: formData, headers: { 'Accept': 'application/json' } });
             fetch('https://formspree.io/f/xqeozjgr', { method: 'POST', body: formData, headers: { 'Accept': 'application/json' } });
-            alert('Успешно записване!');
             loadSchedule();
             closeBookingModal();
+            showThankYouPage(booking.day, booking.time, booking.class);
             e.target.reset();
         }
 
@@ -637,6 +649,27 @@
                 loadScheduleEdit();
                 alert('Добавено!');
             }
+        }
+
+        let lastBooking = {};
+
+        function showThankYouPage(day, time, cls) {
+            lastBooking = { day, time, cls };
+            document.getElementById('thankYouDetails').innerHTML = `
+                <p style="margin:8px 0;"><strong>Ден:</strong> ${day}</p>
+                <p style="margin:8px 0;"><strong>Час:</strong> ${time}</p>
+                <p style="margin:8px 0;"><strong>Тренировка:</strong> ${cls}</p>
+            `;
+            document.getElementById('thankYouPage').style.display = 'block';
+            window.scrollTo(0, 0);
+        }
+
+        function closeThankYouPage() {
+            document.getElementById('thankYouPage').style.display = 'none';
+        }
+
+        function addToCalendarFromThankYou() {
+            addToCalendar(lastBooking.day, lastBooking.time, lastBooking.cls);
         }
 
         // Initialize
