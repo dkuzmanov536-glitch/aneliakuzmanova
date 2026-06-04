@@ -558,13 +558,13 @@
                     </div>
                 </div>
                 ${Object.entries(schedule).map(([day, slots], dayIdx) => `
-                <div style="margin-bottom: 20px; padding: 15px; background: #f5f5f5; border-radius: 8px;">
+                <div style="margin-bottom: 20px; padding: 15px; background: #f5f5f5; border-radius: 8px;" data-day="${day}">
                     <h4>${day}</h4>
                     ${slots.map((slot, slotIdx) => `
-                        <div style="background: white; padding: 10px; margin: 10px 0; border-radius: 5px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
-                            <input type="time" value="${slot.time}" id="slot_${day}_${slotIdx}_time" style="width: 100px;">
-                            <input type="text" value="${slot.class}" id="slot_${day}_${slotIdx}_class" style="flex: 1; min-width: 150px;">
-                            <input type="number" value="${slot.price}" id="slot_${day}_${slotIdx}_price" style="width: 80px;">
+                        <div class="slot-row" style="background: white; padding: 10px; margin: 10px 0; border-radius: 5px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+                            <input type="time" value="${slot.time}" class="slot-time-input" style="width: 100px;">
+                            <input type="text" value="${slot.class}" class="slot-class-input" style="flex: 1; min-width: 150px;">
+                            <input type="number" value="${slot.price}" class="slot-price-input" style="width: 80px;">
                             <button class="delete-btn" onclick="deleteSlot('${day}', ${slotIdx})">Изтрий</button>
                         </div>
                     `).join('')}
@@ -589,23 +589,25 @@
             // Изтрий всички стари записи
             await sb.from('schedule').delete().neq('id', 0);
 
-            // Запиши новите
+            // Вземи всички редове от формата директно
             const rows = [];
-            Object.entries(schedule).forEach(([day, slots]) => {
-                slots.forEach((slot, idx) => {
-                    const timeEl = document.getElementById(`slot_${day}_${idx}_time`);
-                    const classEl = document.getElementById(`slot_${day}_${idx}_class`);
-                    const priceEl = document.getElementById(`slot_${day}_${idx}_price`);
-                    rows.push({
-                        day: day,
-                        time: timeEl ? timeEl.value : slot.time,
-                        class: classEl ? classEl.value : slot.class,
-                        price: priceEl ? parseInt(priceEl.value) : slot.price
-                    });
+            const dayDivs = document.querySelectorAll('#scheduleEditList > div[data-day]');
+            dayDivs.forEach(dayDiv => {
+                const day = dayDiv.getAttribute('data-day');
+                const slotDivs = dayDiv.querySelectorAll('.slot-row');
+                slotDivs.forEach(slotDiv => {
+                    const time = slotDiv.querySelector('.slot-time-input').value;
+                    const cls = slotDiv.querySelector('.slot-class-input').value;
+                    const price = parseInt(slotDiv.querySelector('.slot-price-input').value);
+                    rows.push({ day, time, class: cls, price });
                 });
             });
 
-            await sb.from('schedule').insert(rows);
+            if (rows.length > 0) {
+                const { error } = await sb.from('schedule').insert(rows);
+                if (error) { alert('Грешка при запазване!'); return; }
+            }
+
             await loadData();
             alert('Графикът е запазен!');
         }
