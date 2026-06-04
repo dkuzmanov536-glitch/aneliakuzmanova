@@ -260,7 +260,7 @@
             <p style="font-size:1.2rem; color:#333; margin-bottom:10px;">Очакваме ви на тренировка!</p>
             <div id="thankYouDetails" style="background:#f5f5f5; padding:20px; border-radius:15px; margin:30px 0; text-align:left;">
             </div>
-            <button id="calendarBtn" class="btn" style="background:#27ae60; width:100%; padding:15px; font-size:1.1rem; margin-bottom:15px;" onclick="addToCalendarFromThankYou()">Добави в Календар</button>
+            <button id="calendarBtn" class="btn" style="background:#27ae60; width:100%; padding:15px; font-size:1.1rem; margin-bottom:15px;" onclick="addToCalendarFromThankYou()">Добави в Google Календар</button>
             <button class="btn" style="width:100%; padding:15px; font-size:1.1rem;" onclick="closeThankYouPage()">Към началната страница</button>
         </div>
     </div>
@@ -744,13 +744,13 @@
             endDate.setHours(endDate.getHours() + 1);
 
             const fmt = d => d.toISOString().replace(/[-:]/g,'').split('.')[0] + 'Z';
-            const ics = `BEGIN:VCALENDAR\nVERSION:2.0\nBEGIN:VEVENT\nSUMMARY:${cls}\nDTSTART:${fmt(eventDate)}\nDTEND:${fmt(endDate)}\nDESCRIPTION:Тренировка - ${cls}\nEND:VEVENT\nEND:VCALENDAR`;
-            const blob = new Blob([ics], { type: 'text/calendar' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'тренировка.ics';
-            a.click();
+            const start = fmt(eventDate);
+            const end = fmt(endDate);
+            const title = encodeURIComponent(cls);
+            const details = encodeURIComponent('Тренировка с Анелия Кузманова');
+
+            const googleUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${start}/${end}&details=${details}`;
+            window.open(googleUrl, '_blank');
         }
     </script>
     <!-- Contact Trainer Modal -->
