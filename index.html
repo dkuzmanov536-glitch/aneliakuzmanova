@@ -518,6 +518,27 @@
             if (!phone) return;
 
             const today = new Date().toISOString().split('T')[0];
+
+            // Провери за деактивирана карта
+            const { data: inactive } = await sb.from('cards')
+                .select('*')
+                .eq('phone', phone)
+                .eq('active', false)
+                .gte('expires_at', today)
+                .limit(1);
+
+            if (inactive && inactive.length > 0) {
+                document.getElementById('cardInfo').style.display = 'block';
+                document.getElementById('cardInfo').style.background = '#ffeaea';
+                document.getElementById('cardInfo').style.color = '#e74c3c';
+                document.getElementById('cardInfo').textContent = '❌ Картата е деактивирана — първо платете на място при треньора!';
+                document.getElementById('paymentButtons').style.display = 'block';
+                document.getElementById('cardPayButton').style.display = 'none';
+                document.getElementById('bookingCardId').value = '';
+                return;
+            }
+
+            // Провери за активна карта
             const { data } = await sb.from('cards')
                 .select('*')
                 .eq('phone', phone)
@@ -531,6 +552,8 @@
 
             if (card && remaining > 0) {
                 document.getElementById('cardInfo').style.display = 'block';
+                document.getElementById('cardInfo').style.background = '#e8f5e9';
+                document.getElementById('cardInfo').style.color = '#27ae60';
                 document.getElementById('cardInfo').textContent = `✓ Имаш активна карта! Оставащи тренировки: ${remaining}`;
                 document.getElementById('paymentButtons').style.display = 'none';
                 document.getElementById('cardPayButton').style.display = 'block';
