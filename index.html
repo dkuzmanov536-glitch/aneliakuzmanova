@@ -402,6 +402,19 @@
             return allBookings.filter(b => b.day === day && b.time === time).length;
         }
 
+        function getNextDate(dayName) {
+            const days = { 'Понеделник': 1, 'Вторник': 2, 'Сряда': 3, 'Четвъртък': 4, 'Петък': 5, 'Събота': 6, 'Неделя': 0 };
+            const today = new Date();
+            const todayDay = today.getDay();
+            const targetDay = days[dayName];
+            let diff = targetDay - todayDay;
+            if (diff < 0) diff += 7;
+            if (diff === 0) diff = 0;
+            const next = new Date(today);
+            next.setDate(today.getDate() + diff);
+            return next.toLocaleDateString('bg-BG', { day: '2-digit', month: '2-digit' });
+        }
+
         function getCapacity() {
             return currentCapacity;
         }
@@ -410,7 +423,7 @@
             const capacity = getCapacity();
             const html = Object.entries(schedule).map(([day, slots]) => `
                 <div class="day-schedule">
-                    <div class="day-header">${day}</div>
+                    <div class="day-header">${day} <span style="color:var(--primary); font-size:0.9rem;">${getNextDate(day)}</span></div>
                     ${slots.map(slot => {
                         const count = getBookingsCount(day, slot.time);
                         const remaining = capacity - count;
@@ -464,6 +477,8 @@
             if (error) { alert('Грешка при записване!'); return; }
             allBookings.push(booking);
             const formData = new FormData();
+            formData.append('_subject', 'Ново записване от ' + booking.name);
+            formData.append('_replyto', 'noreply@aneliakuzmanova.com');
             formData.append('Ime', booking.name);
             formData.append('Телефон', booking.phone);
             formData.append('Ден', booking.day);
