@@ -338,10 +338,7 @@
                 <label>Име:</label>
                 <input type="text" id="bookingName" required>
                 <label>Телефон:</label>
-                <div style="display:flex; gap:10px;">
-                    <input type="tel" id="bookingPhone" required onblur="checkCardOnPhone()" style="flex:1;">
-                    <button type="button" class="btn" onclick="checkCardOnPhone()" style="white-space:nowrap; padding:10px 15px;">Провери карта</button>
-                </div>
+                <input type="tel" id="bookingPhone" required>
                 <label>Ден:</label>
                 <input type="text" id="bookingDay" readonly>
                 <label>Час:</label>
@@ -350,13 +347,17 @@
                 <input type="text" id="bookingClass" readonly>
                 <label>Цена:</label>
                 <input type="text" id="bookingPrice" readonly>
-                <div id="cardInfo" style="display:none; background:#e8f5e9; padding:10px; border-radius:8px; margin-top:10px; color:#27ae60; font-weight:bold;"></div>
+                <div id="cardInfo" style="display:none; padding:10px; border-radius:8px; margin-top:10px; font-weight:bold;"></div>
+                <div style="margin-top:15px; display:flex; align-items:center; gap:10px; background:#f5f5f5; padding:12px; border-radius:8px; cursor:pointer;">
+                    <input type="checkbox" id="hasCard" style="width:20px; height:20px; cursor:pointer;" onchange="handleCardCheckbox()">
+                    <label for="hasCard" style="cursor:pointer; font-weight:500; margin:0;">Имам карта</label>
+                </div>
+                <div id="cardStatusMsg" style="display:none; padding:10px; border-radius:8px; margin-top:8px; font-size:0.9rem; font-weight:bold;"></div>
                 <div id="paymentButtons">
-                    <button type="submit" class="btn" style="width: 100%; margin-top: 20px;" >Плати на място</button>
-                    
+                    <button type="submit" class="btn" style="width: 100%; margin-top: 20px;">Плати на място</button>
                 </div>
                 <div id="cardPayButton" style="display:none;">
-                    <button type="submit" class="btn" style="width: 100%; margin-top: 20px; background:#27ae60;" onclick="setPayment('карта')">Потвърди (с карта)</button>
+                    <button type="submit" class="btn" style="width: 100%; margin-top: 20px; background:#27ae60;" onclick="setPayment('карта')">Потвърди</button>
                 </div>
                 <p style="color:#e74c3c; font-size:0.85rem; margin-top:10px; text-align:center;">⚠️ Неявяване на запазена и платена тренировка не подлежи на възстановяване.</p>
                 <input type="hidden" id="bookingPayment" value="на място">
@@ -513,11 +514,29 @@
         });
 
         // Проверка на карта при въвеждане на телефон
+        async function handleCardCheckbox() {
+            const checked = document.getElementById('hasCard').checked;
+            if (checked) {
+                await checkCardOnPhone();
+            } else {
+                document.getElementById('cardStatusMsg').style.display = 'none';
+                document.getElementById('cardInfo').style.display = 'none';
+                document.getElementById('paymentButtons').style.display = 'block';
+                document.getElementById('cardPayButton').style.display = 'none';
+                document.getElementById('bookingCardId').value = '';
+            }
+        }
+
         async function checkCardOnPhone() {
             const phone = document.getElementById('bookingPhone').value;
-            if (!phone) return;
+            if (!phone) {
+                alert('Въведи телефонния си номер първо!');
+                document.getElementById('hasCard').checked = false;
+                return;
+            }
 
             const today = new Date().toISOString().split('T')[0];
+            const statusMsg = document.getElementById('cardStatusMsg');
 
             // Провери за деактивирана карта
             const { data: inactive } = await sb.from('cards')
@@ -528,10 +547,11 @@
                 .limit(1);
 
             if (inactive && inactive.length > 0) {
-                document.getElementById('cardInfo').style.display = 'block';
-                document.getElementById('cardInfo').style.background = '#ffeaea';
-                document.getElementById('cardInfo').style.color = '#e74c3c';
-                document.getElementById('cardInfo').textContent = '❌ Картата е деактивирана — първо платете на място при треньора!';
+                statusMsg.style.display = 'block';
+                statusMsg.style.background = '#ffeaea';
+                statusMsg.style.color = '#e74c3c';
+                statusMsg.innerHTML = '❌ Картата е деактивирана — първо платете на място при треньора!';
+                document.getElementById('cardInfo').style.display = 'none';
                 document.getElementById('paymentButtons').style.display = 'block';
                 document.getElementById('cardPayButton').style.display = 'none';
                 document.getElementById('bookingCardId').value = '';
@@ -551,15 +571,19 @@
             const remaining = card ? card.trainings_total - card.trainings_used : 0;
 
             if (card && remaining > 0) {
-                document.getElementById('cardInfo').style.display = 'block';
-                document.getElementById('cardInfo').style.background = '#e8f5e9';
-                document.getElementById('cardInfo').style.color = '#27ae60';
-                document.getElementById('cardInfo').textContent = `✓ Имаш активна карта! Оставащи тренировки: ${remaining}`;
+                statusMsg.style.display = 'block';
+                statusMsg.style.background = '#e8f5e9';
+                statusMsg.style.color = '#27ae60';
+                statusMsg.innerHTML = `✓ Активна карта! Оставащи тренировки: ${remaining}`;
+                document.getElementById('cardInfo').style.display = 'none';
                 document.getElementById('paymentButtons').style.display = 'none';
                 document.getElementById('cardPayButton').style.display = 'block';
                 document.getElementById('bookingCardId').value = card.id;
             } else {
-                document.getElementById('cardInfo').style.display = 'none';
+                statusMsg.style.display = 'block';
+                statusMsg.style.background = '#ffeaea';
+                statusMsg.style.color = '#e74c3c';
+                statusMsg.innerHTML = '❌ Няма намерена активна карта за този номер!';
                 document.getElementById('paymentButtons').style.display = 'block';
                 document.getElementById('cardPayButton').style.display = 'none';
                 document.getElementById('bookingCardId').value = '';
@@ -1178,7 +1202,7 @@
             <div id="registerTab" class="tab-content">
                 <h2 style="margin-bottom:20px;">Регистрация</h2>
                 <form onsubmit="registerUser(event)">
-                    <label>Ime:</label>
+                    <label>Име:</label>
                     <input type="text" id="regName" required>
                     <label>Телефон:</label>
                     <input type="tel" id="regPhone" required>
@@ -1199,7 +1223,7 @@
             <h2>Купи Карта</h2>
             <p id="cardModalInfo" style="color:var(--primary); font-weight:bold; margin-bottom:20px;"></p>
             <form onsubmit="submitCardPurchase(event)">
-                <label>Ime:</label>
+                <label>Име:</label>
                 <input type="text" id="cardName" required>
                 <label>Телефон:</label>
                 <input type="tel" id="cardPhone" required>
@@ -1234,7 +1258,7 @@
             <h2>Свържи се с треньора</h2>
             <p id="contactTrainerInfo" style="margin: 15px 0; color: var(--primary); font-weight: bold;"></p>
             <form onsubmit="submitContactTrainer(event)">
-                <label>Ime:</label>
+                <label>Име:</label>
                 <input type="text" id="contactName" required>
                 <label>Телефон:</label>
                 <input type="tel" id="contactPhone" required>
