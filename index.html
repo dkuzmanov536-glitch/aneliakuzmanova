@@ -366,6 +366,16 @@
             const { data: bk } = await sb.from('bookings').select('*');
             if (bk) allBookings = bk;
 
+            // Зареди график от Supabase
+            const { data: sc } = await sb.from('schedule').select('*').order('id');
+            if (sc && sc.length > 0) {
+                schedule = {};
+                sc.forEach(row => {
+                    if (!schedule[row.day]) schedule[row.day] = [];
+                    schedule[row.day].push({ id: row.id, time: row.time, class: row.class, price: row.price });
+                });
+            }
+
             loadSchedule();
         }
 
@@ -575,45 +585,55 @@
             }
         }
 
-        function saveSchedule() {
+        async function saveSchedule() {
+            // Изтрий всички стари записи
+            await sb.from('schedule').delete().neq('id', 0);
+
+            // Запиши новите
+            const rows = [];
             Object.entries(schedule).forEach(([day, slots]) => {
                 slots.forEach((slot, idx) => {
                     const timeEl = document.getElementById(`slot_${day}_${idx}_time`);
                     const classEl = document.getElementById(`slot_${day}_${idx}_class`);
                     const priceEl = document.getElementById(`slot_${day}_${idx}_price`);
-                    if (timeEl) slot.time = timeEl.value;
-                    if (classEl) slot.class = classEl.value;
-                    if (priceEl) slot.price = parseInt(priceEl.value);
+                    rows.push({
+                        day: day,
+                        time: timeEl ? timeEl.value : slot.time,
+                        class: classEl ? classEl.value : slot.class,
+                        price: priceEl ? parseInt(priceEl.value) : slot.price
+                    });
                 });
             });
-            loadSchedule();
-            alert(' Графикът е запазен!');
+
+            await sb.from('schedule').insert(rows);
+            await loadData();
+            alert('Графикът е запазен!');
         }
 
-        function deleteSlot(day, idx) {
-            console.log('Изтриване на:', day, idx);
+        async function deleteSlot(day, idx) {
             if (confirm('Сигурен ли си че искаш да изтриеш тази тренировка?')) {
-                if (schedule[day] && schedule[day][idx]) {
-                    schedule[day].splice(idx, 1);
-                    loadScheduleEdit();
-                    alert(' Тренировката е изтрита!');
-                } else {
-                    alert(' Грешка при изтриване!');
+                const slot = schedule[day][idx];
+                if (slot && slot.id) {
+                    await sb.from('schedule').delete().eq('id', slot.id);
                 }
+                schedule[day].splice(idx, 1);
+                await loadData();
+                loadScheduleEdit();
+                alert('Тренировката е изтрита!');
             }
         }
 
-        function addNewSchedule() {
+        async function addNewSchedule() {
             const day = prompt('Ден (Понеделник, Вторник...)');
             const time = prompt('Час (09:00)');
             const cls = prompt('Клас (РГ и Мобилност, Аеробика и Табата, Индивидуална тренировка, Рехабилитационна програма)');
             const price = parseInt(prompt('Цена (5 или 10)'));
-            
+
             if (day && time && cls && price) {
-                if (!schedule[day]) schedule[day] = [];
-                schedule[day].push({ time, class: cls, price });
+                await sb.from('schedule').insert([{ day, time, class: cls, price }]);
+                await loadData();
                 loadScheduleEdit();
-                alert(' Добавено!');
+                alert('Добавено!');
             }
         }
 
