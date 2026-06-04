@@ -560,6 +560,13 @@
             document.getElementById('cardModal').classList.remove('active');
         }
 
+        function retryPayment() {
+            const desc = encodeURIComponent(`Карта ${currentCardType} тренировки`);
+            window.open(`https://revolut.me/0879360792?amount=${currentCardPrice}&currency=EUR&description=${desc}`, '_blank');
+            document.getElementById('cardPageContent').style.display = 'block';
+            document.getElementById('cardPageFail').style.display = 'none';
+        }
+
         function closeCardThankYou() {
             document.getElementById('cardThankYouPage').style.display = 'none';
         }
@@ -593,16 +600,25 @@
             window.open(`https://revolut.me/0879360792?amount=${currentCardPrice}&currency=EUR&description=${desc}`, '_blank');
 
             // Покажи страница за благодарност
+            sessionStorage.setItem('cardPurchased', 'true');
             history.pushState({ cardPurchase: true }, '');
             document.getElementById('cardThankYouPage').style.display = 'block';
+            document.getElementById('cardPageContent').style.display = 'block';
+            document.getElementById('cardPageFail').style.display = 'none';
             window.scrollTo(0, 0);
-            e.target.reset();
-        }
 
-        // Скрий thank you при натискане на назад
-        window.addEventListener('popstate', function(e) {
-            document.getElementById('cardThankYouPage').style.display = 'none';
-        });
+            // След 3 секунди проверяваме дали прозорецът е затворен
+            const revolut = window.open(`https://revolut.me/0879360792?amount=${currentCardPrice}&currency=EUR&description=${desc}`, '_blank');
+            const checkClosed = setInterval(() => {
+                if (revolut && revolut.closed) {
+                    clearInterval(checkClosed);
+                    // Показваме неуспешно ако не е потвърдено
+                    if (!sessionStorage.getItem('paymentConfirmed')) {
+                        document.getElementById('cardPageContent').style.display = 'none';
+                        document.getElementById('cardPageFail').style.display = 'block';
+                    }
+                }
+            }, 1000);
 
         // Проверка дали клиентът има карта
         async function checkCard(phone) {
@@ -1031,6 +1047,11 @@
         // Скрий thank you страниците при зареждане
         document.getElementById('cardThankYouPage').style.display = 'none';
         document.getElementById('thankYouPage').style.display = 'none';
+        // Изчисти sessionStorage при зареждане
+        if (!sessionStorage.getItem('cardPurchased')) {
+            document.getElementById('cardThankYouPage').style.display = 'none';
+        }
+        sessionStorage.removeItem('cardPurchased');
 
         function openContactTrainer(type, price) {
             document.getElementById('contactTrainerInfo').textContent = type + ' - ' + price;
@@ -1171,10 +1192,18 @@
     <!-- Card Purchase Thank You -->
     <div id="cardThankYouPage" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:white; z-index:2000; overflow-y:auto;">
         <div style="max-width:600px; margin:0 auto; padding:60px 20px; text-align:center;">
-            <div style="font-size:5rem; margin-bottom:20px;">✓</div>
-            <h1 style="color:var(--primary); font-size:2rem; margin-bottom:20px;">Плащането е изпратено!</h1>
-            <p style="font-size:1.1rem; color:#333; margin-bottom:20px;">Ще получиш картата на място при първото посещение.</p>
-            <p style="font-size:1rem; color:#666; margin-bottom:30px;">Запиши се за тренировка от графика — с картата не е нужно да плащаш повторно.</p>
+            <div id="cardPageContent">
+                <div style="font-size:5rem; margin-bottom:20px;">✓</div>
+                <h1 style="color:var(--primary); font-size:2rem; margin-bottom:20px;">Плащането е изпратено!</h1>
+                <p style="font-size:1.1rem; color:#333; margin-bottom:20px;">Ще получиш картата на място при първото посещение.</p>
+                <p style="font-size:1rem; color:#666; margin-bottom:30px;">Запиши се за тренировка от графика — с картата не е нужно да плащаш повторно.</p>
+            </div>
+            <div id="cardPageFail" style="display:none;">
+                <div style="font-size:5rem; margin-bottom:20px;">✕</div>
+                <h1 style="color:#e74c3c; font-size:2rem; margin-bottom:20px;">Неуспешно плащане!</h1>
+                <p style="font-size:1.1rem; color:#333; margin-bottom:30px;">Плащането не беше завършено. Опитай отново.</p>
+                <button onclick="retryPayment()" class="btn" style="width:100%; padding:15px; margin-bottom:15px;">Опитай отново</button>
+            </div>
             <button class="btn" style="width:100%; padding:15px;" onclick="closeCardThankYou()">Към началната страница</button>
         </div>
     </div>
