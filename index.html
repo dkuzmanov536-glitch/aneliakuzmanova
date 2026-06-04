@@ -226,11 +226,11 @@
         <h2 style="text-align: center; margin-bottom: 40px;">Видове тренировки</h2>
         <div class="classes-grid">
             <div class="class-card">
-                <h3>Аеробика и Табата</h3>
+                <h3>🤸‍♀️ Аеробика и Табата</h3>
                 <div class="price">5€</div>
             </div>
             <div class="class-card">
-                <h3>РГ и Мобилност</h3>
+                <h3>🧘‍♀️ РГ и Мобилност</h3>
                 <div class="price">5€</div>
             </div>
             <div class="class-card">
@@ -410,7 +410,7 @@
                         <div class="time-slot">
                             <div>
                                 <div class="slot-time">${slot.time}</div>
-                                <div class="slot-class">${slot.class}</div>
+                                <div class="slot-class">${slot.class.includes('Аеробика') ? '🤸‍♀️ ' : slot.class.includes('РГ') ? '🧘‍♀️ ' : ''}${slot.class}</div>
                             </div>
                             <div class="slot-price" style="display:none">${slot.price}€</div>
                             <div>
