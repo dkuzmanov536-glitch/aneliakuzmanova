@@ -296,13 +296,15 @@
     <!-- Booking Modal -->
     <div id="bookingModal" class="modal">
         <div class="modal-content">
-            <span class="close-btn" onclick="closeBookingModal()"></span>
+            <span class="close-btn" onclick="closeBookingModal()">✕</span>
             <h2>Запиши се за тренировка</h2>
             <form onsubmit="submitBooking(event)">
                 <label>Име:</label>
                 <input type="text" id="bookingName" required>
                 <label>Телефон:</label>
                 <input type="tel" id="bookingPhone" required>
+                <label>Email (за напомняне):</label>
+                <input type="email" id="bookingEmail" placeholder="email@example.com">
                 <label>Ден:</label>
                 <input type="text" id="bookingDay" readonly>
                 <label>Час:</label>
@@ -312,6 +314,7 @@
                 <label>Цена:</label>
                 <input type="text" id="bookingPrice" readonly>
                 <button type="submit" class="btn" style="width: 100%; margin-top: 20px;">Потвърди</button>
+                <button type="button" class="btn" style="width: 100%; margin-top: 10px; background: #27ae60;" onclick="addToCalendar(document.getElementById('bookingDay').value, document.getElementById('bookingTime').value, document.getElementById('bookingClass').value)">Добави в Календар</button>
             </form>
         </div>
     </div>
@@ -389,7 +392,7 @@
                                 <div class="slot-time">${slot.time}</div>
                                 <div class="slot-class">${slot.class}</div>
                             </div>
-                            <div class="slot-price">${slot.price}€</div>
+                            <div class="slot-price" style="display:none">${slot.price}€</div>
                             <div>
                                 <button class="btn" onclick="openBookingModal('${day}', '${slot.time}', '${slot.class}', ${slot.price})" ${full ? 'disabled style="background:#ccc;cursor:not-allowed;"' : ''}>
                                     ${full ? 'Няма места' : 'Запиши се'}
@@ -423,6 +426,7 @@
             const booking = {
                 name: document.getElementById('bookingName').value,
                 phone: document.getElementById('bookingPhone').value,
+                email: document.getElementById('bookingEmail').value || '',
                 day: document.getElementById('bookingDay').value,
                 time: document.getElementById('bookingTime').value,
                 class: document.getElementById('bookingClass').value,
@@ -654,9 +658,47 @@
                 closeContactTrainer();
             })
             .catch(err => {
-                alert(' Съобщението е изпратено!');
+                alert('Съобщението е изпратено!');
                 closeContactTrainer();
             });
+        }
+
+        // Затваряне при клик извън модала
+        document.querySelectorAll('.modal').forEach(modal => {
+            modal.addEventListener('click', function(e) {
+                if (e.target === this) {
+                    this.classList.remove('active');
+                    document.getElementById('loginForm').style.display = 'block';
+                    document.getElementById('adminDash').style.display = 'none';
+                    document.getElementById('password').value = '';
+                }
+            });
+        });
+
+        // Добавяне в календар
+        function addToCalendar(day, time, cls) {
+            const days = { 'Понеделник': 1, 'Вторник': 2, 'Сряда': 3, 'Четвъртък': 4, 'Петък': 5, 'Събота': 6, 'Неделя': 0 };
+            const today = new Date();
+            const todayDay = today.getDay();
+            const targetDay = days[day];
+            let diff = targetDay - todayDay;
+            if (diff <= 0) diff += 7;
+            const eventDate = new Date(today);
+            eventDate.setDate(today.getDate() + diff);
+
+            const [h, m] = time.split(':');
+            eventDate.setHours(parseInt(h), parseInt(m), 0);
+            const endDate = new Date(eventDate);
+            endDate.setHours(endDate.getHours() + 1);
+
+            const fmt = d => d.toISOString().replace(/[-:]/g,'').split('.')[0] + 'Z';
+            const ics = `BEGIN:VCALENDAR\nVERSION:2.0\nBEGIN:VEVENT\nSUMMARY:${cls}\nDTSTART:${fmt(eventDate)}\nDTEND:${fmt(endDate)}\nDESCRIPTION:Тренировка - ${cls}\nEND:VEVENT\nEND:VCALENDAR`;
+            const blob = new Blob([ics], { type: 'text/calendar' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'тренировка.ics';
+            a.click();
         }
     </script>
     <!-- Contact Trainer Modal -->
