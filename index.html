@@ -604,6 +604,15 @@
             currentCardType = type;
             currentCardPrice = price;
             document.getElementById('cardModalInfo').textContent = `Карта ${type} тренировки — ${price}€`;
+
+            // Попълни автоматично ако е влязъл
+            if (currentUser) {
+                const name = currentUser.user_metadata?.name || '';
+                const phone = currentUser.user_metadata?.phone || '';
+                if (name) document.getElementById('cardName').value = name;
+                if (phone) document.getElementById('cardPhone').value = phone;
+            }
+
             document.getElementById('cardModal').classList.add('active');
         }
 
