@@ -337,6 +337,8 @@
             <form onsubmit="submitBooking(event)">
                 <label>Име:</label>
                 <input type="text" id="bookingName" required>
+                <label>Фамилия:</label>
+                <input type="text" id="bookingSurname" required>
                 <label>Телефон:</label>
                 <input type="tel" id="bookingPhone" required>
                 <label>Ден:</label>
@@ -626,7 +628,7 @@
 
         async function submitCardPurchase(e) {
             e.preventDefault();
-            const name = document.getElementById('cardName').value;
+            const name = document.getElementById('cardName').value + ' ' + (document.getElementById('cardSurname').value || '');
             const phone = document.getElementById('cardPhone').value;
 
             const expires = new Date();
@@ -807,7 +809,7 @@
         async function submitBooking(e) {
             e.preventDefault();
             const booking = {
-                name: document.getElementById('bookingName').value,
+                name: document.getElementById('bookingName').value + ' ' + document.getElementById('bookingSurname').value,
                 phone: document.getElementById('bookingPhone').value,
                 day: document.getElementById('bookingDay').value,
                 time: document.getElementById('bookingTime').value,
@@ -815,6 +817,19 @@
                 price: document.getElementById('bookingPrice').value,
                 payment: document.getElementById('bookingPayment').value || 'на място'
             };
+
+            // Провери за дублирано записване
+            const { data: existing } = await sb.from('bookings')
+                .select('id')
+                .eq('phone', booking.phone)
+                .eq('day', booking.day)
+                .eq('time', booking.time);
+
+            if (existing && existing.length > 0) {
+                alert('⚠️ Вече сте записани за тази тренировка!');
+                return;
+            }
+
             const { error } = await sb.from('bookings').insert([booking]);
             if (error) { alert('Грешка при записване!'); return; }
             allBookings.push(booking);
