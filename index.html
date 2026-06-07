@@ -230,7 +230,8 @@
 
     <!-- Classes -->
     <section id="classes" class="container">
-        <h2 style="text-align: center; margin-bottom: 40px;">Видове тренировки</h2>
+        <h2 style="text-align: center; margin-bottom: 20px;">Видове тренировки</h2>
+        <p style="text-align:center; color:#e67e22; margin-bottom:30px;">⚠️ Децата тренират на 50% отстъпка</p>
         <div class="classes-grid">
             <div class="class-card">
                 <h3>🤸‍♀️ Аеробика и Табата</h3>
@@ -301,7 +302,24 @@
 
                 <!-- Bookings Tab -->
                 <div id="bookings" class="tab-content active">
-                    <h3>Списък на записаните хора</h3>
+                    <h3 style="margin-bottom:15px;">Записани Хора</h3>
+                    <div style="display:flex; gap:10px; margin-bottom:15px; flex-wrap:wrap;">
+                        <select id="filterDay" onchange="loadAdminBookings()" style="padding:8px; border:1px solid #ddd; border-radius:5px; font-family:Arial,sans-serif;">
+                            <option value="">Всички дни</option>
+                            <option>Понеделник</option>
+                            <option>Вторник</option>
+                            <option>Сряда</option>
+                            <option>Четвъртък</option>
+                            <option>Петък</option>
+                            <option>Събота</option>
+                        </select>
+                        <select id="filterClass" onchange="loadAdminBookings()" style="padding:8px; border:1px solid #ddd; border-radius:5px; font-family:Arial,sans-serif;">
+                            <option value="">Всички тренировки</option>
+                            <option>Аеробика и Табата</option>
+                            <option>РГ и Мобилност</option>
+                            <option>Табата</option>
+                        </select>
+                    </div>
                     <div class="bookings-list" id="bookingsList"></div>
                 </div>
 
@@ -365,6 +383,7 @@
                     <button type="submit" class="btn" style="width: 100%; margin-top: 20px; background:#27ae60;" onclick="setPayment('карта')">Потвърди</button>
                 </div>
                 <p style="color:#e74c3c; font-size:0.85rem; margin-top:10px; text-align:center;">⚠️ Неявяване на запазена и платена тренировка не подлежи на възстановяване.</p>
+                <p style="color:#e67e22; font-size:0.85rem; margin-top:5px; text-align:center;">⚠️ Децата тренират на 50% отстъпка.</p>
                 <input type="hidden" id="bookingPayment" value="на място">
                 <input type="hidden" id="bookingCardId" value="">
             </form>
@@ -502,6 +521,11 @@
             const el2 = document.getElementById('priceRG');
             if (el1) el1.textContent = price;
             if (el2) el2.textContent = price;
+
+            const card6 = document.getElementById('card6price');
+            const card12 = document.getElementById('card12price');
+            if (card6) card6.textContent = isChild ? '10€' : '20€';
+            if (card12) card12.textContent = isChild ? '17€' : '35€';
         }
 
         function updateAuthUI(user) {
@@ -954,8 +978,15 @@
             event.target.classList.add('active');
         }
 
-        async function loadBookingsList() {
-            const { data } = await sb.from('bookings').select('*').order('created_at', { ascending: false });
+        async function loadAdminBookings() {
+            const filterDay = document.getElementById('filterDay')?.value || '';
+            const filterClass = document.getElementById('filterClass')?.value || '';
+
+            let query = sb.from('bookings').select('*').order('created_at', { ascending: false });
+            if (filterDay) query = query.eq('day', filterDay);
+            if (filterClass) query = query.eq('class', filterClass);
+
+            const { data } = await query;
             allBookings = data || [];
             const list = document.getElementById('bookingsList');
             if (allBookings.length === 0) {
@@ -965,13 +996,17 @@
             list.innerHTML = allBookings.map(b => `
                 <div class="booking-item" style="border-left-color: ${b.is_child ? '#e67e22' : 'var(--primary)'}">
                     <strong>${b.name} ${b.is_child ? '👶 ДЕТЕ' : ''}</strong>
-                    <small>${b.phone}</small>
+                    <small>📞 ${b.phone}</small>
                     <small>${b.day} - ${b.time}</small>
                     <small>${b.class} (${b.price}) ${b.payment ? '| ' + b.payment : ''}</small>
                     <small style="color: #999;">${b.created_at ? new Date(b.created_at).toLocaleString('bg-BG') : ''}</small>
                     <button class="delete-btn" onclick="deleteBooking(${b.id})">Изтрий</button>
                 </div>
             `).join('');
+        }
+
+        async function loadBookingsList() {
+            await loadAdminBookings();
         }
 
         async function deleteBooking(id) {
@@ -1153,14 +1188,16 @@
         loadData();
         loadVideos();
         requestNotificationPermission();
-        // Скрий thank you страниците при зареждане
         document.getElementById('cardThankYouPage').style.display = 'none'; document.getElementById('cardThankYouPage').style.pointerEvents = 'none';
         document.getElementById('thankYouPage').style.display = 'none'; document.getElementById('thankYouPage').style.pointerEvents = 'none';
-        // Изчисти sessionStorage при зареждане
-        if (!sessionStorage.getItem('cardPurchased')) {
-            document.getElementById('cardThankYouPage').style.display = 'none'; document.getElementById('cardThankYouPage').style.pointerEvents = 'none';
-        }
         sessionStorage.removeItem('cardPurchased');
+
+        // Провери дали вече е влязъл и обнови цените
+        sb.auth.getSession().then(({ data: { session } }) => {
+            if (session?.user) {
+                updateClassPrices(session.user.user_metadata?.is_child);
+            }
+        });
 
         function openContactTrainer(type, price) {
             document.getElementById('contactTrainerInfo').textContent = type + ' - ' + price;
@@ -1345,19 +1382,19 @@
     <section id="cards" style="padding: 60px 20px; background: var(--light);">
         <div class="container">
             <h2 style="text-align:center; margin-bottom:10px;">Карти за Тренировки</h2>
-            <p style="text-align:center; color:#666; margin-bottom:40px;">Спести с наша карта — плати веднъж, тренирай повече!</p>
+            <p style="text-align:center; color:#e67e22; margin-bottom:30px;">⚠️ Децата тренират на 50% отстъпка</p>
             <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px,1fr)); gap:30px; max-width:700px; margin:0 auto;">
 
                 <!-- Card 6 -->
                 <div style="background:white; border-radius:20px; padding:40px 30px; text-align:center; box-shadow:0 10px 40px rgba(0,0,0,0.1); border-top:5px solid var(--primary);">
                     <h3 style="font-size:1.5rem; margin-bottom:15px;">6 Тренировки</h3>
-                    <div style="font-size:3rem; font-weight:bold; color:var(--primary); margin:20px 0;">20€</div>
+                    <div style="font-size:3rem; font-weight:bold; color:var(--primary); margin:20px 0;" id="card6price">20€</div>
                     <ul style="list-style:none; margin:20px 0; text-align:left;">
                         <li style="padding:8px 0; border-bottom:1px solid #eee;">✓ 6 групови тренировки</li>
                         <li style="padding:8px 0; border-bottom:1px solid #eee;">✓ Валидност 1 месец</li>
                         <li style="padding:8px 0;">✓ Всички видове класове</li>
                     </ul>
-                    <button onclick="openCardModal(6, 20)" class="btn" style="display:block; text-align:center; width:100%; padding:15px; margin-top:20px; font-size:1rem;">
+                    <button onclick="openCardModal(6, currentUser?.user_metadata?.is_child ? 10 : 20)" class="btn" style="display:block; text-align:center; width:100%; padding:15px; margin-top:20px; font-size:1rem;">
                         Купи карта
                     </button>
                     <p style="color:#e74c3c; font-size:0.8rem; margin-top:10px; text-align:left;">
@@ -1370,14 +1407,14 @@
                 <div style="background:linear-gradient(135deg, var(--primary), var(--secondary)); border-radius:20px; padding:40px 30px; text-align:center; box-shadow:0 10px 40px rgba(255,107,53,0.3); color:white; transform:scale(1.03);">
                     <div style="background:white; color:var(--primary); display:inline-block; padding:5px 15px; border-radius:20px; font-size:0.85rem; font-weight:bold; margin-bottom:15px;">НАЙ-ПОПУЛЯРНА</div>
                     <h3 style="font-size:1.5rem; margin-bottom:15px; color:white;">12 Тренировки</h3>
-                    <div style="font-size:3rem; font-weight:bold; color:white; margin:20px 0;">35€</div>
+                    <div style="font-size:3rem; font-weight:bold; color:white; margin:20px 0;" id="card12price">35€</div>
                     <ul style="list-style:none; margin:20px 0; text-align:left;">
                         <li style="padding:8px 0; border-bottom:1px solid rgba(255,255,255,0.3);">✓ 12 групови тренировки</li>
                         <li style="padding:8px 0; border-bottom:1px solid rgba(255,255,255,0.3);">✓ Валидност 1 месец</li>
                         <li style="padding:8px 0; border-bottom:1px solid rgba(255,255,255,0.3);">✓ Всички видове класове</li>
                         <li style="padding:8px 0;">✓ Спестяваш 25%</li>
                     </ul>
-                    <button onclick="openCardModal(12, 35)" style="display:block; text-align:center; width:100%; padding:15px; margin-top:20px; font-size:1rem; background:white; color:var(--primary); border-radius:8px; font-weight:bold; border:none; cursor:pointer;">
+                    <button onclick="openCardModal(12, currentUser?.user_metadata?.is_child ? 17.5 : 35)" style="display:block; text-align:center; width:100%; padding:15px; margin-top:20px; font-size:1rem; background:white; color:var(--primary); border-radius:8px; font-weight:bold; border:none; cursor:pointer;">
                         Купи карта
                     </button>
                     <p style="color:rgba(255,255,255,0.9); font-size:0.8rem; margin-top:10px; text-align:left;">
