@@ -234,11 +234,11 @@
         <div class="classes-grid">
             <div class="class-card">
                 <h3>🤸‍♀️ Аеробика и Табата</h3>
-                <div class="price">5€</div>
+                <div class="price" id="priceAerobika">5€</div>
             </div>
             <div class="class-card">
                 <h3>🧘‍♀️ РГ и Мобилност</h3>
-                <div class="price">5€</div>
+                <div class="price" id="priceRG">5€</div>
             </div>
             <div class="class-card">
                 <h3>Индивидуална тренировка</h3>
@@ -350,11 +350,14 @@
                 <label>Цена:</label>
                 <input type="text" id="bookingPrice" readonly>
                 <div id="cardInfo" style="display:none; padding:10px; border-radius:8px; margin-top:10px; font-weight:bold;"></div>
-                <div style="margin-top:15px; display:flex; align-items:center; gap:10px; background:#f5f5f5; padding:12px; border-radius:8px; cursor:pointer;">
+                <div style="margin-top:15px; display:flex; align-items:center; gap:10px; background:#f0f8ff; padding:12px; border-radius:8px; cursor:pointer;">
+                    <input type="checkbox" id="isChild" style="width:20px; height:20px; cursor:pointer;" onchange="toggleChildPrice()">
+                    <label for="isChild" style="cursor:pointer; font-weight:500; margin:0;">Дете съм</label>
+                </div>
+                <div style="margin-top:10px; display:flex; align-items:center; gap:10px; background:#f5f5f5; padding:12px; border-radius:8px; cursor:pointer;">
                     <input type="checkbox" id="hasCard" style="width:20px; height:20px; cursor:pointer;" onchange="handleCardCheckbox()">
                     <label for="hasCard" style="cursor:pointer; font-weight:500; margin:0;">Имам карта</label>
                 </div>
-                <div id="cardStatusMsg" style="display:none; padding:10px; border-radius:8px; margin-top:8px; font-size:0.9rem; font-weight:bold;"></div>
                 <div id="paymentButtons">
                     <button type="submit" class="btn" style="width: 100%; margin-top: 20px;">Плати на място</button>
                 </div>
@@ -453,14 +456,16 @@
         async function registerUser(e) {
             e.preventDefault();
             const name = document.getElementById('regName').value;
+            const surname = document.getElementById('regSurname').value;
             const phone = document.getElementById('regPhone').value;
             const email = document.getElementById('regEmail').value;
             const password = document.getElementById('regPassword').value;
+            const isChild = document.getElementById('regIsChild').checked;
 
             const { data, error } = await sb.auth.signUp({
                 email,
                 password,
-                options: { data: { name, phone } }
+                options: { data: { name: name + ' ' + surname, phone, is_child: isChild } }
             });
 
             if (error) {
@@ -491,22 +496,35 @@
             updateAuthUI(null);
         }
 
+        function updateClassPrices(isChild) {
+            const price = isChild ? '3€' : '5€';
+            const el1 = document.getElementById('priceAerobika');
+            const el2 = document.getElementById('priceRG');
+            if (el1) el1.textContent = price;
+            if (el2) el2.textContent = price;
+        }
+
         function updateAuthUI(user) {
             if (user) {
                 currentUser = user;
                 document.getElementById('authBtn').style.display = 'none';
                 document.getElementById('userInfo').style.display = 'inline';
                 document.getElementById('userName').textContent = user.user_metadata?.name || user.email;
-                // Попълни автоматично но позволи редакция
                 if (user.user_metadata?.name) document.getElementById('bookingName').value = user.user_metadata.name;
                 if (user.user_metadata?.phone) document.getElementById('bookingPhone').value = user.user_metadata.phone;
+                if (user.user_metadata?.is_child) {
+                    document.getElementById('isChild').checked = true;
+                    document.getElementById('bookingPrice').value = '3€';
+                }
+                updateClassPrices(user.user_metadata?.is_child);
             } else {
                 currentUser = null;
                 document.getElementById('authBtn').style.display = 'inline-block';
                 document.getElementById('userInfo').style.display = 'none';
-                // Изчисти полетата
                 document.getElementById('bookingName').value = '';
                 document.getElementById('bookingPhone').value = '';
+                document.getElementById('isChild').checked = false;
+                updateClassPrices(false);
             }
         }
 
@@ -794,11 +812,34 @@
         }
 
         // Booking Modal
+        let originalPrice = 0;
+
+        function toggleChildPrice() {
+            const isChild = document.getElementById('isChild').checked;
+            const priceField = document.getElementById('bookingPrice');
+            if (isChild) {
+                priceField.value = '3€';
+            } else {
+                priceField.value = originalPrice + '€';
+            }
+        }
+
         function openBookingModal(day, time, cls, price) {
+            originalPrice = price;
             document.getElementById('bookingDay').value = day;
             document.getElementById('bookingTime').value = time;
             document.getElementById('bookingClass').value = cls;
-            document.getElementById('bookingPrice').value = price + '€';
+
+            // Ако е дете (от регистрацията) → 3€
+            const isChildFromReg = currentUser?.user_metadata?.is_child;
+            if (isChildFromReg) {
+                document.getElementById('isChild').checked = true;
+                document.getElementById('bookingPrice').value = '3€';
+            } else {
+                document.getElementById('isChild').checked = false;
+                document.getElementById('bookingPrice').value = price + '€';
+            }
+
             document.getElementById('bookingModal').classList.add('active');
         }
 
@@ -815,7 +856,8 @@
                 time: document.getElementById('bookingTime').value,
                 class: document.getElementById('bookingClass').value,
                 price: document.getElementById('bookingPrice').value,
-                payment: document.getElementById('bookingPayment').value || 'на място'
+                payment: document.getElementById('bookingPayment').value || 'на място',
+                is_child: document.getElementById('isChild').checked
             };
 
             // Провери за дублирано записване
@@ -921,11 +963,11 @@
                 return;
             }
             list.innerHTML = allBookings.map(b => `
-                <div class="booking-item">
-                    <strong>${b.name}</strong>
+                <div class="booking-item" style="border-left-color: ${b.is_child ? '#e67e22' : 'var(--primary)'}">
+                    <strong>${b.name} ${b.is_child ? '👶 ДЕТЕ' : ''}</strong>
                     <small>${b.phone}</small>
                     <small>${b.day} - ${b.time}</small>
-                    <small>${b.class} (${b.price})</small>
+                    <small>${b.class} (${b.price}) ${b.payment ? '| ' + b.payment : ''}</small>
                     <small style="color: #999;">${b.created_at ? new Date(b.created_at).toLocaleString('bg-BG') : ''}</small>
                     <button class="delete-btn" onclick="deleteBooking(${b.id})">Изтрий</button>
                 </div>
@@ -1228,12 +1270,18 @@
                 <form onsubmit="registerUser(event)">
                     <label>Име:</label>
                     <input type="text" id="regName" required>
+                    <label>Фамилия:</label>
+                    <input type="text" id="regSurname" required>
                     <label>Телефон:</label>
                     <input type="tel" id="regPhone" required>
                     <label>Email:</label>
                     <input type="email" id="regEmail" required placeholder="email@example.com">
                     <label>Парола:</label>
                     <input type="password" id="regPassword" required placeholder="Минимум 6 символа">
+                    <div style="margin-top:10px; display:flex; align-items:center; gap:10px; background:#f0f8ff; padding:12px; border-radius:8px;">
+                        <input type="checkbox" id="regIsChild" style="width:20px; height:20px; cursor:pointer;">
+                        <label for="regIsChild" style="cursor:pointer; font-weight:500; margin:0;">Дете съм</label>
+                    </div>
                     <button type="submit" class="btn" style="width:100%; margin-top:20px;">Регистрирай се</button>
                 </form>
             </div>
