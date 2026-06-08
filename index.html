@@ -299,7 +299,7 @@
 
     <!-- Admin Modal -->
     <div id="adminModal" class="modal">
-        <div class="modal-content">
+        <div class="modal-content" style="max-width:680px; width:95%; max-height:85vh; padding:30px;">
             <span class="close-btn" onclick="closeAdminPanel()">✕</span>
             
             <!-- Login Form -->
@@ -319,6 +319,7 @@
                     <button class="tab-btn" onclick="switchTab('editSchedule')">Редактирай График</button>
                     <button class="tab-btn" onclick="switchTab('videosTab')">Видеа</button>
                     <button class="tab-btn" onclick="switchTab('cardsTab'); loadCardsAdmin()">Карти</button>
+                    <button class="tab-btn" onclick="switchTab('statsTab'); loadStats()">Статистика</button>
                 </div>
 
                 <!-- Bookings Tab -->
@@ -363,6 +364,29 @@
                 <div id="cardsTab" class="tab-content">
                     <h3 style="margin-bottom:20px;">Картодържатели</h3>
                     <div id="cardsAdminList"></div>
+                </div>
+
+                <!-- Stats Tab -->
+                <div id="statsTab" class="tab-content">
+                    <h3 style="margin-bottom:20px;">Статистика</h3>
+                    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(140px,1fr)); gap:15px;">
+                        <div style="background:linear-gradient(135deg,var(--primary),var(--secondary)); padding:20px; border-radius:12px; text-align:center; color:white;">
+                            <div id="statBookings" style="font-size:2rem; font-weight:bold;">-</div>
+                            <div style="font-size:0.85rem; margin-top:5px;">Тренировки</div>
+                        </div>
+                        <div style="background:linear-gradient(135deg,#27ae60,#2ecc71); padding:20px; border-radius:12px; text-align:center; color:white;">
+                            <div id="statCards" style="font-size:2rem; font-weight:bold;">-</div>
+                            <div style="font-size:0.85rem; margin-top:5px;">Продадени карти</div>
+                        </div>
+                        <div style="background:linear-gradient(135deg,#2980b9,#3498db); padding:20px; border-radius:12px; text-align:center; color:white;">
+                            <div id="statClients" style="font-size:2rem; font-weight:bold;">-</div>
+                            <div style="font-size:0.85rem; margin-top:5px;">Клиенти</div>
+                        </div>
+                        <div style="background:linear-gradient(135deg,#8e44ad,#9b59b6); padding:20px; border-radius:12px; text-align:center; color:white;">
+                            <div id="statReviews" style="font-size:2rem; font-weight:bold;">-</div>
+                            <div style="font-size:0.85rem; margin-top:5px;">Отзива</div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1154,6 +1178,7 @@
             { type: 'streak_10', icon: '🦁', name: 'Шампион', desc: '10 тренировки подред' },
             { type: 'training_20', icon: '🏆', name: 'Ветеран', desc: '20 тренировки общо' },
             { type: 'card_owner', icon: '💎', name: 'Картодържател', desc: 'Купи карта' },
+            { type: 'reviewer', icon: '💬', name: 'Гласът на залата', desc: 'Остави отзив' },
         ];
 
         async function checkAndAwardBadges(phone) {
@@ -1197,6 +1222,11 @@
                     <div class="badge-icon">${earnedTypes.has(badge.type) ? badge.icon : '🔒'}</div>
                     <div class="badge-name">${badge.name}</div>
                     <div class="badge-desc">${badge.desc}</div>
+                    ${earnedTypes.has(badge.type) ? `
+                    <div style="margin-top:8px; display:flex; gap:5px; justify-content:center;">
+                        <a href="https://www.facebook.com/sharer/sharer.php?u=https://aneliakuzmanova.com&quote=Спечелих значката ${badge.icon} ${badge.name} от Анелия Кузманова!" target="_blank" style="background:#1877F2; color:white; border:none; padding:4px 8px; border-radius:5px; font-size:0.7rem; text-decoration:none; cursor:pointer;">FB</a>
+                        <a href="https://wa.me/?text=Спечелих значката ${badge.icon} ${badge.name} от Анелия Кузманова! https://aneliakuzmanova.com" target="_blank" style="background:#25D366; color:white; border:none; padding:4px 8px; border-radius:5px; font-size:0.7rem; text-decoration:none; cursor:pointer;">WA</a>
+                    </div>` : ''}
                 </div>
             `).join('');
         }
@@ -1269,9 +1299,81 @@
             addToCalendar(lastBooking.day, lastBooking.time, lastBooking.cls);
         }
 
+        async function loadStats() {
+            const [{ count: bookings }, { count: cards }, { count: reviews }] = await Promise.all([
+                sb.from('bookings').select('*', { count: 'exact', head: true }),
+                sb.from('cards').select('*', { count: 'exact', head: true }),
+                sb.from('reviews').select('*', { count: 'exact', head: true })
+            ]);
+
+            // Уникални клиенти по телефон
+            const { data: phones } = await sb.from('bookings').select('phone');
+            const uniqueClients = new Set((phones || []).map(p => p.phone)).size;
+
+            document.getElementById('statBookings').textContent = bookings || 0;
+            document.getElementById('statCards').textContent = cards || 0;
+            document.getElementById('statClients').textContent = uniqueClients || 0;
+            document.getElementById('statReviews').textContent = reviews || 0;
+        }
+
+        // Reviews
+        let currentRating = 0;
+
+        function setRating(rating) {
+            currentRating = rating;
+            const stars = document.querySelectorAll('#starRating span');
+            stars.forEach((s, i) => s.textContent = i < rating ? '★' : '☆');
+        }
+
+        async function submitReview() {
+            const name = document.getElementById('reviewName').value.trim();
+            const comment = document.getElementById('reviewComment').value.trim();
+            if (!name || !comment || currentRating === 0) {
+                alert('Моля попълни всички полета и избери оценка!');
+                return;
+            }
+            const { error } = await sb.from('reviews').insert([{ name, rating: currentRating, comment }]);
+            if (error) { alert('Грешка при изпращане!'); return; }
+
+            // Дай badge за отзив ако е влязъл
+            if (currentUser) {
+                const phone = currentUser.user_metadata?.phone || currentUser.email;
+                const { data: existing } = await sb.from('badges').select('id').eq('user_phone', phone).eq('badge_type', 'reviewer');
+                if (!existing || existing.length === 0) {
+                    await sb.from('badges').insert([{ user_phone: phone, badge_type: 'reviewer' }]);
+                    showBadgeNotification('reviewer');
+                    loadUserBadges(phone);
+                }
+            }
+            document.getElementById('reviewName').value = '';
+            document.getElementById('reviewComment').value = '';
+            setRating(0);
+            alert('✓ Благодарим за отзива!');
+            loadReviews();
+        }
+
+        async function loadReviews() {
+            const { data } = await sb.from('reviews').select('*').order('created_at', { ascending: false });
+            const list = document.getElementById('reviewsList');
+            if (!data || data.length === 0) {
+                list.innerHTML = '<p style="text-align:center; color:#999; grid-column:1/-1;">Все още няма отзиви.</p>';
+                return;
+            }
+            list.innerHTML = data.map(r => `
+                <div style="background:#f9f9f9; padding:20px; border-radius:15px; box-shadow:0 5px 15px rgba(0,0,0,0.05);">
+                    <div style="font-size:1.2rem; color:#FFD700; margin-bottom:8px;">${'★'.repeat(r.rating)}${'☆'.repeat(5-r.rating)}</div>
+                    <p style="color:#333; margin-bottom:12px; font-style:italic;">"${r.comment}"</p>
+                    <strong style="color:var(--primary);">${r.name}</strong>
+                    <small style="color:#999; display:block; margin-top:4px;">${new Date(r.created_at).toLocaleDateString('bg-BG')}</small>
+                </div>
+            `).join('');
+        }
+
         // Initialize
         loadData();
         loadVideos();
+        loadReviews();
+        loadStats();
         requestNotificationPermission();
         document.getElementById('cardThankYouPage').style.display = 'none'; document.getElementById('cardThankYouPage').style.pointerEvents = 'none';
         document.getElementById('thankYouPage').style.display = 'none'; document.getElementById('thankYouPage').style.pointerEvents = 'none';
@@ -1520,6 +1622,55 @@
             <h2 style="text-align:center; margin-bottom:30px;">Моите Значки</h2>
             <p id="badgesLoginMsg" style="text-align:center; color:#999;">Влез в акаунта си за да видиш значките си.</p>
             <div id="badgesList" style="display:flex; flex-wrap:wrap; gap:15px; justify-content:center;"></div>
+        </div>
+    </section>
+
+    <!-- Reviews Section -->
+    <section style="padding:60px 20px; background:white;">
+        <div class="container">
+            <h2 style="text-align:center; margin-bottom:10px;">Отзиви</h2>
+            <p style="text-align:center; color:#666; margin-bottom:30px;">Какво казват нашите клиенти</p>
+
+            <!-- Форма за отзив -->
+            <div id="reviewForm" style="background:#f5f5f5; padding:25px; border-radius:15px; margin-bottom:40px; max-width:600px; margin-left:auto; margin-right:auto;">
+                <h3 style="margin-bottom:5px;">Остави отзив и спечели бадж! 💬</h3>
+                <p style="color:#e67e22; font-size:0.85rem; margin-bottom:15px;">⭐ Спечели значката "Гласът на залата"</p>
+                <input type="text" id="reviewName" placeholder="Вашето Име" style="width:100%; padding:10px; margin-bottom:10px; border:1px solid #ddd; border-radius:8px; font-family:Arial,sans-serif;">
+                <div style="margin-bottom:10px;">
+                    <span style="font-weight:bold;">Оценка: </span>
+                    <span id="starRating" style="font-size:1.5rem; cursor:pointer;">
+                        <span onclick="setRating(1)">☆</span>
+                        <span onclick="setRating(2)">☆</span>
+                        <span onclick="setRating(3)">☆</span>
+                        <span onclick="setRating(4)">☆</span>
+                        <span onclick="setRating(5)">☆</span>
+                    </span>
+                </div>
+                <textarea id="reviewComment" placeholder="Напишете вашия отзив..." style="width:100%; padding:10px; border:1px solid #ddd; border-radius:8px; height:100px; font-family:Arial,sans-serif; resize:vertical;"></textarea>
+                <button class="btn" style="width:100%; margin-top:15px;" onclick="submitReview()">Изпрати отзив</button>
+            </div>
+
+            <!-- Списък с отзиви -->
+            <div id="reviewsList" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(280px,1fr)); gap:20px;"></div>
+        </div>
+    </section>
+
+    <!-- Location Section -->
+    <section style="padding:60px 20px; background:#f5f5f5;">
+        <div class="container">
+            <h2 style="text-align:center; margin-bottom:10px;">Къде се намираме</h2>
+            <p style="text-align:center; color:#666; margin-bottom:30px;">Враца, България</p>
+            <div style="border-radius:15px; overflow:hidden; box-shadow:0 10px 30px rgba(0,0,0,0.1);">
+                <iframe
+                    src="https://maps.google.com/maps?q=43.2033,23.5492&z=16&output=embed"
+                    width="100%" height="400" style="border:0;" allowfullscreen="" loading="lazy">
+                </iframe>
+            </div>
+            <div style="text-align:center; margin-top:20px;">
+                <a href="https://maps.app.goo.gl/fsZ4KcYbFv6Xzw419" target="_blank" class="btn" style="text-decoration:none;">
+                    📍 Отвори в Google Maps
+                </a>
+            </div>
         </div>
     </section>
 
