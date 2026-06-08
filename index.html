@@ -1300,13 +1300,15 @@
         }
 
         async function loadStats() {
+            const startDate = '2026-06-08';
+
             const [{ count: bookings }, { count: cards }, { count: reviews }] = await Promise.all([
-                sb.from('bookings').select('*', { count: 'exact', head: true }),
+                sb.from('bookings').select('*', { count: 'exact', head: true }).gte('created_at', startDate),
                 sb.from('cards').select('*', { count: 'exact', head: true }),
                 sb.from('reviews').select('*', { count: 'exact', head: true })
             ]);
 
-            // Уникални клиенти по телефон
+            // Уникални клиенти по телефон - всички
             const { data: phones } = await sb.from('bookings').select('phone');
             const uniqueClients = new Set((phones || []).map(p => p.phone)).size;
 
