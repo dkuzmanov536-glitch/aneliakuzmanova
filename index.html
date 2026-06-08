@@ -582,7 +582,10 @@
                 document.getElementById('userInfo').style.display = 'inline';
                 document.getElementById('userName').textContent = user.user_metadata?.name || user.email;
                 if (user.user_metadata?.name) document.getElementById('bookingName').value = user.user_metadata.name;
-                if (user.user_metadata?.phone) document.getElementById('bookingPhone').value = user.user_metadata.phone;
+                if (user.user_metadata?.phone) {
+                    document.getElementById('bookingPhone').value = user.user_metadata.phone;
+                    document.getElementById('unsubPhone').value = user.user_metadata.phone;
+                }
                 if (user.user_metadata?.is_child) {
                     document.getElementById('isChild').checked = true;
                     document.getElementById('bookingPrice').value = '3€';
@@ -1318,6 +1321,38 @@
             document.getElementById('statReviews').textContent = reviews || 0;
         }
 
+        async function loadMyBookings() {
+            const phone = document.getElementById('unsubPhone').value.trim();
+            if (!phone) { alert('Въведи телефон!'); return; }
+
+            const { data } = await sb.from('bookings').select('*').eq('phone', phone).order('created_at', { ascending: false });
+            const list = document.getElementById('myBookingsList');
+
+            if (!data || data.length === 0) {
+                list.innerHTML = '<p style="text-align:center; color:#999;">Няма намерени записвания за този номер.</p>';
+                return;
+            }
+
+            list.innerHTML = data.map(b => `
+                <div style="background:white; padding:15px; border-radius:10px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center; box-shadow:0 3px 10px rgba(0,0,0,0.08);">
+                    <div>
+                        <strong>${b.day} - ${b.time}</strong>
+                        <small style="display:block; color:#666;">${b.class} | ${b.price}</small>
+                    </div>
+                    <button class="delete-btn" onclick="unsubscribe(${b.id})">Отпиши се</button>
+                </div>
+            `).join('');
+        }
+
+        async function unsubscribe(id) {
+            if (confirm('Сигурен ли си че искаш да се отпишеш?')) {
+                await sb.from('bookings').delete().eq('id', id);
+                alert('✓ Успешно отписан!');
+                loadMyBookings();
+                loadData();
+            }
+        }
+
         // Reviews
         let currentRating = 0;
 
@@ -1568,6 +1603,19 @@
             </form>
         </div>
     </div>
+
+    <!-- Unsubscribe Section -->
+    <section style="padding:40px 20px; background:#fff8f0;">
+        <div class="container" style="max-width:600px;">
+            <h2 style="text-align:center; margin-bottom:10px;">Отпиши се от тренировка</h2>
+            <p style="text-align:center; color:#666; margin-bottom:25px;">Въведи телефона си за да видиш записванията си</p>
+            <div style="display:flex; gap:10px; margin-bottom:20px;">
+                <input type="tel" id="unsubPhone" placeholder="Телефон" style="flex:1; padding:12px; border:1px solid #ddd; border-radius:8px; font-family:Arial,sans-serif;">
+                <button class="btn" onclick="loadMyBookings()">Търси</button>
+            </div>
+            <div id="myBookingsList"></div>
+        </div>
+    </section>
 
     <!-- Cards Section -->
     <section id="cards" style="padding: 60px 20px; background: var(--light);">
