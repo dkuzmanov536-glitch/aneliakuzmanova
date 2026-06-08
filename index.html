@@ -565,9 +565,10 @@
                 }
                 updateClassPrices(user.user_metadata?.is_child);
                 // Зареди баджове
-                if (user.user_metadata?.phone) {
-                    loadUserBadges(user.user_metadata.phone);
-                    checkAndAwardBadges(user.user_metadata.phone);
+                const userPhone = user.user_metadata?.phone || user.email;
+                if (userPhone) {
+                    loadUserBadges(userPhone);
+                    checkAndAwardBadges(userPhone);
                 }
             } else {
                 currentUser = null;
@@ -1147,12 +1148,12 @@
         // Видео функции
         // Badge дефиниции
         const BADGES = [
-            { type: 'first_training', icon: '🌟', name: 'Първа стъпка', desc: 'Първа тренировка' },
-            { type: 'registered', icon: '✅', name: 'Добре дошъл', desc: 'Регистрация' },
+            { type: 'first_training', icon: '⭐', name: 'Първа стъпка', desc: 'Първа тренировка' },
+            { type: 'registered', icon: '🎉', name: 'Добре дошъл', desc: 'Регистрация' },
             { type: 'streak_5', icon: '🔥', name: 'На огън', desc: '5 тренировки' },
-            { type: 'streak_10', icon: '💪', name: 'Шампион', desc: '10 тренировки подред' },
+            { type: 'streak_10', icon: '🦁', name: 'Шампион', desc: '10 тренировки подред' },
             { type: 'training_20', icon: '🏆', name: 'Ветеран', desc: '20 тренировки общо' },
-            { type: 'card_owner', icon: '💳', name: 'Картодържател', desc: 'Купи карта' },
+            { type: 'card_owner', icon: '💎', name: 'Картодържател', desc: 'Купи карта' },
         ];
 
         async function checkAndAwardBadges(phone) {
@@ -1186,7 +1187,8 @@
 
         async function loadUserBadges(phone) {
             if (!phone) return;
-            document.getElementById('badgesSection').style.display = 'block';
+            const loginMsg = document.getElementById('badgesLoginMsg');
+            if (loginMsg) loginMsg.style.display = 'none';
             const list = document.getElementById('badgesList');
             const { data: earned } = await sb.from('badges').select('badge_type').eq('user_phone', phone);
             const earnedTypes = new Set((earned || []).map(b => b.badge_type));
@@ -1279,6 +1281,8 @@
         sb.auth.getSession().then(({ data: { session } }) => {
             if (session?.user) {
                 updateClassPrices(session.user.user_metadata?.is_child);
+                const userPhone = session.user.user_metadata?.phone || session.user.email;
+                if (userPhone) loadUserBadges(userPhone);
             }
         });
 
@@ -1510,6 +1514,15 @@
         </div>
     </section>
 
+    <!-- Badges Section -->
+    <section style="padding:40px 20px; background:white;" id="badgesSection">
+        <div class="container">
+            <h2 style="text-align:center; margin-bottom:30px;">Моите Значки</h2>
+            <p id="badgesLoginMsg" style="text-align:center; color:#999;">Влез в акаунта си за да видиш значките си.</p>
+            <div id="badgesList" style="display:flex; flex-wrap:wrap; gap:15px; justify-content:center;"></div>
+        </div>
+    </section>
+
     <!-- Videos Section -->
     <section id="videos" style="padding: 60px 20px; background: #1A1A1D;">
         <div class="container">
@@ -1518,14 +1531,6 @@
             <div id="videosGrid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(300px,1fr)); gap:25px;">
                 <p style="text-align:center; color:#666; grid-column:1/-1;">Все още няма добавени видеа.</p>
             </div>
-        </div>
-    </section>
-
-    <!-- Badges Section -->
-    <section style="padding:40px 20px; background:white; display:none;" id="badgesSection">
-        <div class="container">
-            <h2 style="text-align:center; margin-bottom:30px;">Моите Значки</h2>
-            <div id="badgesList" style="display:flex; flex-wrap:wrap; gap:15px; justify-content:center;"></div>
         </div>
     </section>
 
