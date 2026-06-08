@@ -173,6 +173,27 @@
         .delete-btn:hover { background: #c0392b; }
         .empty { text-align: center; color: #999; padding: 30px; }
 
+        /* Badges */
+        .badge {
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            width: 130px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            border: 2px solid #dee2e6;
+            transition: transform 0.3s;
+        }
+        .badge:hover { transform: scale(1.05); }
+        .badge.earned {
+            background: linear-gradient(135deg, #fff9c4, #fff3e0);
+            border-color: #FFD700;
+            box-shadow: 0 5px 20px rgba(255,215,0,0.4);
+        }
+        .badge-icon { font-size: 2.5rem; margin-bottom: 8px; }
+        .badge-name { font-size: 0.8rem; font-weight: bold; color: #333; }
+        .badge-desc { font-size: 0.7rem; color: #666; margin-top: 4px; }
+
         /* Mobile */
         @media (max-width: 600px) {
             .hero { padding: 30px 15px; }
@@ -495,6 +516,8 @@
                 }
                 return;
             }
+            // Дай badge за регистрация
+            await sb.from('badges').insert([{ user_phone: phone, badge_type: 'registered' }]);
             alert('✓ Регистрацията е успешна!');
             closeAuthModal();
         }
@@ -541,6 +564,11 @@
                     document.getElementById('bookingPrice').value = '3€';
                 }
                 updateClassPrices(user.user_metadata?.is_child);
+                // Зареди баджове
+                if (user.user_metadata?.phone) {
+                    loadUserBadges(user.user_metadata.phone);
+                    checkAndAwardBadges(user.user_metadata.phone);
+                }
             } else {
                 currentUser = null;
                 document.getElementById('authBtn').style.display = 'inline-block';
@@ -899,6 +927,7 @@
             const { error } = await sb.from('bookings').insert([booking]);
             if (error) { alert('Грешка при записване!'); return; }
             allBookings.push(booking);
+            await checkAndAwardBadges(booking.phone);
 
             // Обнови карта ако е използвана
             const cardId = document.getElementById('bookingCardId').value;
@@ -1116,6 +1145,60 @@
         let lastBooking = {};
 
         // Видео функции
+        // Badge дефиниции
+        const BADGES = [
+            { type: 'first_training', icon: '🌟', name: 'Първа стъпка', desc: 'Първа тренировка' },
+            { type: 'registered', icon: '✅', name: 'Добре дошъл', desc: 'Регистрация' },
+            { type: 'streak_5', icon: '🔥', name: 'На огън', desc: '5 тренировки' },
+            { type: 'streak_10', icon: '💪', name: 'Шампион', desc: '10 тренировки подред' },
+            { type: 'training_20', icon: '🏆', name: 'Ветеран', desc: '20 тренировки общо' },
+            { type: 'card_owner', icon: '💳', name: 'Картодържател', desc: 'Купи карта' },
+        ];
+
+        async function checkAndAwardBadges(phone) {
+            if (!phone) return;
+            const { data: existing } = await sb.from('badges').select('badge_type').eq('user_phone', phone);
+            const earned = new Set((existing || []).map(b => b.badge_type));
+            const { data: bookings } = await sb.from('bookings').select('*').eq('phone', phone);
+            const total = bookings?.length || 0;
+            const toAward = [];
+            if (total >= 1 && !earned.has('first_training')) toAward.push('first_training');
+            if (total >= 5 && !earned.has('streak_5')) toAward.push('streak_5');
+            if (total >= 10 && !earned.has('streak_10')) toAward.push('streak_10');
+            if (total >= 20 && !earned.has('training_20')) toAward.push('training_20');
+            const { data: cards } = await sb.from('cards').select('id').eq('phone', phone);
+            if (cards?.length > 0 && !earned.has('card_owner')) toAward.push('card_owner');
+            for (const badge_type of toAward) {
+                await sb.from('badges').insert([{ user_phone: phone, badge_type }]);
+                showBadgeNotification(badge_type);
+            }
+        }
+
+        function showBadgeNotification(badge_type) {
+            const badge = BADGES.find(b => b.type === badge_type);
+            if (!badge) return;
+            const notif = document.createElement('div');
+            notif.style.cssText = 'position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#FFD700;color:#333;padding:15px 25px;border-radius:15px;z-index:3000;font-weight:bold;box-shadow:0 10px 30px rgba(255,215,0,0.5);';
+            notif.innerHTML = `${badge.icon} Нова значка: ${badge.name}!`;
+            document.body.appendChild(notif);
+            setTimeout(() => notif.remove(), 3000);
+        }
+
+        async function loadUserBadges(phone) {
+            if (!phone) return;
+            document.getElementById('badgesSection').style.display = 'block';
+            const list = document.getElementById('badgesList');
+            const { data: earned } = await sb.from('badges').select('badge_type').eq('user_phone', phone);
+            const earnedTypes = new Set((earned || []).map(b => b.badge_type));
+            list.innerHTML = BADGES.map(badge => `
+                <div class="badge ${earnedTypes.has(badge.type) ? 'earned' : ''}">
+                    <div class="badge-icon">${earnedTypes.has(badge.type) ? badge.icon : '🔒'}</div>
+                    <div class="badge-name">${badge.name}</div>
+                    <div class="badge-desc">${badge.desc}</div>
+                </div>
+            `).join('');
+        }
+
         async function loadVideos() {
             const { data, error } = await sb.storage.from('videos').list();
             const grid = document.getElementById('videosGrid');
@@ -1435,6 +1518,14 @@
             <div id="videosGrid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(300px,1fr)); gap:25px;">
                 <p style="text-align:center; color:#666; grid-column:1/-1;">Все още няма добавени видеа.</p>
             </div>
+        </div>
+    </section>
+
+    <!-- Badges Section -->
+    <section style="padding:40px 20px; background:white; display:none;" id="badgesSection">
+        <div class="container">
+            <h2 style="text-align:center; margin-bottom:30px;">Моите Значки</h2>
+            <div id="badgesList" style="display:flex; flex-wrap:wrap; gap:15px; justify-content:center;"></div>
         </div>
     </section>
 
