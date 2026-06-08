@@ -362,7 +362,20 @@
 
                 <!-- Cards Tab -->
                 <div id="cardsTab" class="tab-content">
-                    <h3 style="margin-bottom:20px;">Картодържатели</h3>
+                    <h3 style="margin-bottom:15px;">Картодържатели</h3>
+                    <div style="display:flex; gap:10px; margin-bottom:15px; flex-wrap:wrap;">
+                        <select id="filterCards" onchange="loadCardsAdmin()" style="padding:8px; border:1px solid #ddd; border-radius:5px; font-family:Arial,sans-serif;">
+                            <option value="">Всички карти</option>
+                            <option value="active">Активни</option>
+                            <option value="inactive">Деактивирани</option>
+                            <option value="expired">Изтекли</option>
+                        </select>
+                        <select id="filterCardType" onchange="loadCardsAdmin()" style="padding:8px; border:1px solid #ddd; border-radius:5px; font-family:Arial,sans-serif;">
+                            <option value="">Всички типове</option>
+                            <option value="6">6 тренировки</option>
+                            <option value="12">12 тренировки</option>
+                        </select>
+                    </div>
                     <div id="cardsAdminList"></div>
                 </div>
 
@@ -780,7 +793,17 @@
 
         async function loadCardsAdmin() {
             const today = new Date().toISOString().split('T')[0];
-            const { data } = await sb.from('cards').select('*').order('created_at', { ascending: false });
+            const filter = document.getElementById('filterCards')?.value || '';
+            const filterType = document.getElementById('filterCardType')?.value || '';
+
+            let query = sb.from('cards').select('*').order('created_at', { ascending: false });
+            if (filter === 'active') query = query.eq('active', true).gte('expires_at', today);
+            if (filter === 'inactive') query = query.eq('active', false);
+            if (filter === 'expired') query = query.lt('expires_at', today);
+            if (filterType === '6') query = query.eq('trainings_total', 6);
+            if (filterType === '12') query = query.eq('trainings_total', 12);
+
+            const { data } = await query;
             const list = document.getElementById('cardsAdminList');
 
             if (!data || data.length === 0) {
@@ -1608,7 +1631,7 @@
     <section style="padding:40px 20px; background:#fff8f0;">
         <div class="container" style="max-width:600px;">
             <h2 style="text-align:center; margin-bottom:10px;">Отпиши се от тренировка</h2>
-            <p style="text-align:center; color:#666; margin-bottom:25px;">Въведи телефона си за да видиш записванията си</p>
+            <p style="text-align:center; color:#666; margin-bottom:25px;">Въведи телефона си, за да видиш записванията си</p>
             <div style="display:flex; gap:10px; margin-bottom:20px;">
                 <input type="tel" id="unsubPhone" placeholder="Телефон" style="flex:1; padding:12px; border:1px solid #ddd; border-radius:8px; font-family:Arial,sans-serif;">
                 <button class="btn" onclick="loadMyBookings()">Търси</button>
