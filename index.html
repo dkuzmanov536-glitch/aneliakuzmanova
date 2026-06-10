@@ -1221,7 +1221,8 @@
             const cls = document.getElementById('newClass').value;
             const price = parseInt(document.getElementById('newPrice').value);
             if (!day || !time || !cls || !price) { alert('Попълни всички полета!'); return; }
-            await sb.from('schedule').insert([{ day, time, class: cls, price, date: date || null }]);
+            const { error } = await sb.from('schedule').insert([{ day, time, class: cls, price }]);
+            if (error) { alert('Грешка: ' + error.message); return; }
             document.getElementById('newScheduleFormContainer').innerHTML = '';
             await loadData();
             loadScheduleEdit();
