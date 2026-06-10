@@ -324,8 +324,7 @@
 
                 <!-- Bookings Tab -->
                 <div id="bookings" class="tab-content active">
-                    <h3 style="margin-bottom:15px;">Записани Хора</h3>
-                    <div style="display:flex; gap:10px; margin-bottom:15px; flex-wrap:wrap;">
+                    <div style="display:flex; gap:10px; margin-bottom:15px; flex-wrap:wrap; align-items:center;">
                         <select id="filterDay" onchange="loadAdminBookings()" style="padding:8px; border:1px solid #ddd; border-radius:5px; font-family:Arial,sans-serif;">
                             <option value="">Всички дни</option>
                             <option>Понеделник</option>
@@ -341,6 +340,7 @@
                             <option>РГ и Мобилност</option>
                             <option>Табата</option>
                         </select>
+                        <span id="bookingsCount" style="padding:6px 12px; background:var(--primary); color:#fff; border-radius:20px; font-size:14px; font-weight:bold;"></span>
                     </div>
                     <div class="bookings-list" id="bookingsList"></div>
                 </div>
@@ -1068,6 +1068,8 @@
 
             const { data } = await query;
             allBookings = data || [];
+            const countEl = document.getElementById('bookingsCount');
+            if (countEl) countEl.textContent = allBookings.length + ' записани';
             const list = document.getElementById('bookingsList');
             if (allBookings.length === 0) {
                 list.innerHTML = '<div class="empty">Няма записания</div>';
