@@ -515,8 +515,9 @@
             loadSchedule();
         }
 
-        function getBookingsCount(day, time) {
+        function getBookingsCount(day, time, date) {
             const norm = t => t ? t.substring(0, 5) : t;
+            if (date) return 0; // дата-специфични слотове — не броим стари записвания
             return allBookings.filter(b => b.day === day && norm(b.time) === norm(time)).length;
         }
 
@@ -910,7 +911,7 @@
                 <div class="day-schedule">
                     <div class="day-header">${day} <span style="color:var(--primary); font-size:0.9rem;">${date || getNextDate(day)}</span></div>
                     ${slots.map(slot => {
-                        const count = getBookingsCount(day, slot.time);
+                        const count = getBookingsCount(day, slot.time, slot.date);
                         const remaining = capacity - count;
                         const full = remaining <= 0;
                         return `
