@@ -895,7 +895,7 @@
             const capacity = getCapacity();
             const html = Object.entries(schedule).map(([day, slots]) => `
                 <div class="day-schedule">
-                    <div class="day-header">${day} <span style="color:var(--primary); font-size:0.9rem;">${getNextDate(day)}</span></div>
+                    <div class="day-header">${day} <span style="color:var(--primary); font-size:0.9rem;">${slots.find(s => s.date) ? slots.find(s => s.date).date : getNextDate(day)}</span></div>
                     ${slots.map(slot => {
                         const count = getBookingsCount(day, slot.time);
                         const remaining = capacity - count;
@@ -903,7 +903,7 @@
                         return `
                         <div class="time-slot">
                             <div>
-                                <div class="slot-time">${slot.time}${slot.date ? ` <span style="font-size:0.8rem;color:var(--primary);">${slot.date}</span>` : ''}</div>
+                                <div class="slot-time">${slot.time}</div>
                                 <div class="slot-class">${slot.class.includes('Аеробика') ? '🤸‍♀️ ' : slot.class.includes('РГ') ? '🧘‍♀️ ' : ''}${slot.class}</div>
                             </div>
                             <div class="slot-price" style="display:none">${slot.price}€</div>
