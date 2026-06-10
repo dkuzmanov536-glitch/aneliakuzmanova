@@ -347,6 +347,7 @@
                 <!-- Edit Schedule Tab -->
                 <div id="editSchedule" class="tab-content">
                     <h3>Редактирай Графика</h3>
+                    <div id="newScheduleFormContainer"></div>
                     <button class="btn" onclick="addNewSchedule()" style="margin-bottom: 20px;">+ Добави Нова Тренировка</button>
                     <div id="scheduleEditList"></div>
                 </div>
@@ -1124,8 +1125,6 @@
                     `).join('')}
                 </div>
             `).join('')}
-            <button class="btn" onclick="addNewSchedule()" style="margin-bottom: 15px;">+ Добави Тренировка</button>
-            <br>
             <button class="btn" onclick="saveSchedule()" style="width: 100%; margin-top: 10px; background: #27ae60;"> Потвърди Промените</button>`;
         }
 
@@ -1181,41 +1180,38 @@
         }
 
         function addNewSchedule() {
-            const existing = document.getElementById('newScheduleForm');
-            if (existing) { existing.remove(); return; }
-            const form = document.createElement('div');
-            form.id = 'newScheduleForm';
-            form.style.cssText = 'background:#fff3cd;padding:20px;border-radius:8px;margin-bottom:15px;';
-            form.innerHTML = `
-                <h4 style="margin-bottom:12px;">Нова Тренировка</h4>
-                <div style="display:flex;flex-direction:column;gap:10px;">
-                    <div style="display:flex;gap:10px;flex-wrap:wrap;">
-                        <select id="newDay" style="padding:8px;border:1px solid #ddd;border-radius:5px;flex:1;min-width:140px;">
-                            <option value="">-- Ден --</option>
-                            <option>Понеделник</option><option>Вторник</option><option>Сряда</option>
-                            <option>Четвъртък</option><option>Петък</option><option>Събота</option><option>Неделя</option>
-                        </select>
-                        <input type="text" id="newDate" placeholder="дд.мм.гггг" style="padding:8px;border:1px solid #ddd;border-radius:5px;flex:1;min-width:140px;">
-                        <input type="time" id="newTime" style="padding:8px;border:1px solid #ddd;border-radius:5px;flex:1;min-width:100px;">
-                    </div>
-                    <div style="display:flex;gap:10px;flex-wrap:wrap;">
-                        <select id="newClass" style="padding:8px;border:1px solid #ddd;border-radius:5px;flex:2;min-width:200px;">
-                            <option value="">-- Тренировка --</option>
-                            <option>Аеробика и Табата</option>
-                            <option>РГ и Мобилност</option>
-                            <option>Индивидуална тренировка</option>
-                            <option>Рехабилитационна програма</option>
-                        </select>
-                        <input type="number" id="newPrice" placeholder="Цена (€)" min="1" style="padding:8px;border:1px solid #ddd;border-radius:5px;width:100px;">
-                    </div>
-                    <div style="display:flex;gap:10px;">
-                        <button class="btn" onclick="submitNewSchedule()" style="background:#27ae60;">Добави</button>
-                        <button class="btn" onclick="document.getElementById('newScheduleForm').remove()" style="background:#e74c3c;">Откажи</button>
+            const container = document.getElementById('newScheduleFormContainer');
+            if (container.innerHTML.trim()) { container.innerHTML = ''; return; }
+            container.innerHTML = `
+                <div style="background:#fff3cd;padding:20px;border-radius:8px;margin-bottom:15px;">
+                    <h4 style="margin-bottom:12px;">Нова Тренировка</h4>
+                    <div style="display:flex;flex-direction:column;gap:10px;">
+                        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                            <select id="newDay" style="padding:8px;border:1px solid #ddd;border-radius:5px;flex:1;min-width:140px;">
+                                <option value="">-- Ден --</option>
+                                <option>Понеделник</option><option>Вторник</option><option>Сряда</option>
+                                <option>Четвъртък</option><option>Петък</option><option>Събота</option><option>Неделя</option>
+                            </select>
+                            <input type="text" id="newDate" placeholder="дд.мм.гггг" style="padding:8px;border:1px solid #ddd;border-radius:5px;flex:1;min-width:140px;">
+                            <input type="time" id="newTime" style="padding:8px;border:1px solid #ddd;border-radius:5px;flex:1;min-width:100px;">
+                        </div>
+                        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                            <select id="newClass" style="padding:8px;border:1px solid #ddd;border-radius:5px;flex:2;min-width:200px;">
+                                <option value="">-- Тренировка --</option>
+                                <option>Аеробика и Табата</option>
+                                <option>РГ и Мобилност</option>
+                                <option>Индивидуална тренировка</option>
+                                <option>Рехабилитационна програма</option>
+                            </select>
+                            <input type="number" id="newPrice" placeholder="Цена (€)" min="1" style="padding:8px;border:1px solid #ddd;border-radius:5px;width:100px;">
+                        </div>
+                        <div style="display:flex;gap:10px;">
+                            <button class="btn" onclick="submitNewSchedule()" style="background:#27ae60;">Добави</button>
+                            <button class="btn" onclick="document.getElementById('newScheduleFormContainer').innerHTML=''" style="background:#e74c3c;">Откажи</button>
+                        </div>
                     </div>
                 </div>
             `;
-            const btn = document.querySelector('#scheduleEditList button[onclick="addNewSchedule()"]');
-            btn.parentNode.insertBefore(form, btn);
         }
 
         async function submitNewSchedule() {
@@ -1226,7 +1222,7 @@
             const price = parseInt(document.getElementById('newPrice').value);
             if (!day || !time || !cls || !price) { alert('Попълни всички полета!'); return; }
             await sb.from('schedule').insert([{ day, time, class: cls, price, date: date || null }]);
-            document.getElementById('newScheduleForm').remove();
+            document.getElementById('newScheduleFormContainer').innerHTML = '';
             await loadData();
             loadScheduleEdit();
         }
