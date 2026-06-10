@@ -893,9 +893,22 @@
 
         function loadSchedule() {
             const capacity = getCapacity();
-            const html = Object.entries(schedule).map(([day, slots]) => `
+            // Групирай по ден + дата (за да може един ден да има няколко блока с различни дати)
+            const groups = [];
+            Object.entries(schedule).forEach(([day, slots]) => {
+                const byDate = {};
+                slots.forEach(slot => {
+                    const key = slot.date || '';
+                    if (!byDate[key]) byDate[key] = [];
+                    byDate[key].push(slot);
+                });
+                Object.entries(byDate).forEach(([date, groupSlots]) => {
+                    groups.push({ day, date, slots: groupSlots });
+                });
+            });
+            const html = groups.map(({ day, date, slots }) => `
                 <div class="day-schedule">
-                    <div class="day-header">${day} <span style="color:var(--primary); font-size:0.9rem;">${slots.find(s => s.date) ? slots.find(s => s.date).date : getNextDate(day)}</span></div>
+                    <div class="day-header">${day} <span style="color:var(--primary); font-size:0.9rem;">${date || getNextDate(day)}</span></div>
                     ${slots.map(slot => {
                         const count = getBookingsCount(day, slot.time);
                         const remaining = capacity - count;
