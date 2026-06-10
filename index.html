@@ -903,7 +903,7 @@
                         return `
                         <div class="time-slot">
                             <div>
-                                <div class="slot-time">${slot.time}</div>
+                                <div class="slot-time">${slot.time}${slot.date ? ` <span style="font-size:0.8rem;color:var(--primary);">${slot.date}</span>` : ''}</div>
                                 <div class="slot-class">${slot.class.includes('Аеробика') ? '🤸‍♀️ ' : slot.class.includes('РГ') ? '🧘‍♀️ ' : ''}${slot.class}</div>
                             </div>
                             <div class="slot-price" style="display:none">${slot.price}€</div>
