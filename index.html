@@ -500,7 +500,7 @@
                 schedule = {};
                 sc.forEach(row => {
                     if (!schedule[row.day]) schedule[row.day] = [];
-                    schedule[row.day].push({ id: row.id, time: row.time, class: row.class, price: row.price });
+                    schedule[row.day].push({ id: row.id, time: row.time, date: row.date || null, class: row.class, price: row.price });
                 });
             }
 
@@ -508,7 +508,8 @@
         }
 
         function getBookingsCount(day, time) {
-            return allBookings.filter(b => b.day === day && b.time === time).length;
+            const norm = t => t ? t.substring(0, 5) : t;
+            return allBookings.filter(b => b.day === day && norm(b.time) === norm(time)).length;
         }
 
         let currentUser = null;
@@ -1115,6 +1116,7 @@
                     ${slots.map((slot, slotIdx) => `
                         <div class="slot-row" style="background: white; padding: 10px; margin: 10px 0; border-radius: 5px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
                             <input type="time" value="${slot.time}" class="slot-time-input" style="width: 100px;">
+                            <input type="date" value="${slot.date || ''}" class="slot-date-input" style="width: 135px;">
                             <input type="text" value="${slot.class}" class="slot-class-input" style="flex: 1; min-width: 150px;">
                             <input type="number" value="${slot.price}" class="slot-price-input" style="width: 80px;">
                             <button class="delete-btn" onclick="deleteSlot('${day}', ${slotIdx})">Изтрий</button>
@@ -1149,9 +1151,10 @@
                 const slotDivs = dayDiv.querySelectorAll('.slot-row');
                 slotDivs.forEach(slotDiv => {
                     const time = slotDiv.querySelector('.slot-time-input').value;
+                    const date = slotDiv.querySelector('.slot-date-input').value || null;
                     const cls = slotDiv.querySelector('.slot-class-input').value;
                     const price = parseInt(slotDiv.querySelector('.slot-price-input').value);
-                    rows.push({ day, time, class: cls, price });
+                    rows.push({ day, time, date, class: cls, price });
                 });
             });
 
@@ -1177,18 +1180,55 @@
             }
         }
 
-        async function addNewSchedule() {
-            const day = prompt('Ден (Понеделник, Вторник...)');
-            const time = prompt('Час (09:00)');
-            const cls = prompt('Клас (РГ и Мобилност, Аеробика и Табата, Индивидуална тренировка, Рехабилитационна програма)');
-            const price = parseInt(prompt('Цена (5 или 10)'));
+        function addNewSchedule() {
+            const existing = document.getElementById('newScheduleForm');
+            if (existing) { existing.remove(); return; }
+            const form = document.createElement('div');
+            form.id = 'newScheduleForm';
+            form.style.cssText = 'background:#fff3cd;padding:20px;border-radius:8px;margin-bottom:15px;';
+            form.innerHTML = `
+                <h4 style="margin-bottom:12px;">Нова Тренировка</h4>
+                <div style="display:flex;flex-direction:column;gap:10px;">
+                    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                        <select id="newDay" style="padding:8px;border:1px solid #ddd;border-radius:5px;flex:1;min-width:140px;">
+                            <option value="">-- Ден --</option>
+                            <option>Понеделник</option><option>Вторник</option><option>Сряда</option>
+                            <option>Четвъртък</option><option>Петък</option><option>Събота</option><option>Неделя</option>
+                        </select>
+                        <input type="date" id="newDate" style="padding:8px;border:1px solid #ddd;border-radius:5px;flex:1;min-width:140px;">
+                        <input type="time" id="newTime" style="padding:8px;border:1px solid #ddd;border-radius:5px;flex:1;min-width:100px;">
+                    </div>
+                    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                        <select id="newClass" style="padding:8px;border:1px solid #ddd;border-radius:5px;flex:2;min-width:200px;">
+                            <option value="">-- Тренировка --</option>
+                            <option>Аеробика и Табата</option>
+                            <option>РГ и Мобилност</option>
+                            <option>Индивидуална тренировка</option>
+                            <option>Рехабилитационна програма</option>
+                        </select>
+                        <input type="number" id="newPrice" placeholder="Цена (€)" min="1" style="padding:8px;border:1px solid #ddd;border-radius:5px;width:100px;">
+                    </div>
+                    <div style="display:flex;gap:10px;">
+                        <button class="btn" onclick="submitNewSchedule()" style="background:#27ae60;">Добави</button>
+                        <button class="btn" onclick="document.getElementById('newScheduleForm').remove()" style="background:#e74c3c;">Откажи</button>
+                    </div>
+                </div>
+            `;
+            const btn = document.querySelector('#scheduleEditList button[onclick="addNewSchedule()"]');
+            btn.parentNode.insertBefore(form, btn);
+        }
 
-            if (day && time && cls && price) {
-                await sb.from('schedule').insert([{ day, time, class: cls, price }]);
-                await loadData();
-                loadScheduleEdit();
-                alert('Добавено!');
-            }
+        async function submitNewSchedule() {
+            const day = document.getElementById('newDay').value;
+            const date = document.getElementById('newDate').value;
+            const time = document.getElementById('newTime').value;
+            const cls = document.getElementById('newClass').value;
+            const price = parseInt(document.getElementById('newPrice').value);
+            if (!day || !time || !cls || !price) { alert('Попълни всички полета!'); return; }
+            await sb.from('schedule').insert([{ day, time, class: cls, price, date: date || null }]);
+            document.getElementById('newScheduleForm').remove();
+            await loadData();
+            loadScheduleEdit();
         }
 
         function setPayment(type) {
