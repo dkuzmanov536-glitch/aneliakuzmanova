@@ -931,7 +931,7 @@
             Object.entries(schedule).forEach(([day, slots]) => {
                 const byDate = {};
                 slots.forEach(slot => {
-                    if (!isThisWeek(slot.date)) return; // само тази седмица
+                    if (!isThisWeek(slot.date)) return; // само тази седмица или нагоре
                     const key = slot.date || '';
                     if (!byDate[key]) byDate[key] = [];
                     byDate[key].push(slot);
@@ -1637,15 +1637,9 @@
         function isThisWeek(dateStr) {
             const d = parseSlotDate(dateStr);
             if (!d) return true; // без дата = повтаряща се = винаги показвай
-            const now = new Date();
-            const dow = now.getDay();
-            const mon = new Date(now);
-            mon.setDate(now.getDate() - (dow === 0 ? 6 : dow - 1));
-            mon.setHours(0,0,0,0);
-            const sun = new Date(mon);
-            sun.setDate(mon.getDate() + 6);
-            sun.setHours(23,59,59,999);
-            return d >= mon && d <= sun;
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            return d >= today; // показвай ако е днес или в бъдеще
         }
 
         // ---- #4: Моят Профил ----
