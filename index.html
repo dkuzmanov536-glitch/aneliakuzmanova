@@ -1542,9 +1542,7 @@
         // Провери дали вече е влязъл и обнови цените
         sb.auth.getSession().then(({ data: { session } }) => {
             if (session?.user) {
-                updateClassPrices(session.user.user_metadata?.is_child);
-                const userPhone = session.user.user_metadata?.phone || session.user.email;
-                if (userPhone) loadUserBadges(userPhone);
+                updateAuthUI(session.user);
             }
         });
 
