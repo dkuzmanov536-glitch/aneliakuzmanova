@@ -1157,9 +1157,10 @@
                 const slotDivs = dayDiv.querySelectorAll('.slot-row');
                 slotDivs.forEach(slotDiv => {
                     const time = slotDiv.querySelector('.slot-time-input').value;
+                    const date = slotDiv.querySelector('.slot-date-input')?.value || null;
                     const cls = slotDiv.querySelector('.slot-class-input').value;
                     const price = parseInt(slotDiv.querySelector('.slot-price-input').value);
-                    rows.push({ day, time, class: cls, price });
+                    rows.push({ day, time, date: date || null, class: cls, price });
                 });
             });
 
@@ -1227,7 +1228,7 @@
             const cls = document.getElementById('newClass').value;
             const price = parseInt(document.getElementById('newPrice').value);
             if (!day || !time || !cls || !price) { alert('Попълни всички полета!'); return; }
-            const { error } = await sb.from('schedule').insert([{ day, time, class: cls, price }]);
+            const { error } = await sb.from('schedule').insert([{ day, time, date: date || null, class: cls, price }]);
             if (error) { alert('Грешка: ' + error.message); return; }
             document.getElementById('newScheduleFormContainer').innerHTML = '';
             await loadData();
