@@ -1157,10 +1157,9 @@
                 const slotDivs = dayDiv.querySelectorAll('.slot-row');
                 slotDivs.forEach(slotDiv => {
                     const time = slotDiv.querySelector('.slot-time-input').value;
-                    const date = slotDiv.querySelector('.slot-date-input').value || null;
                     const cls = slotDiv.querySelector('.slot-class-input').value;
                     const price = parseInt(slotDiv.querySelector('.slot-price-input').value);
-                    rows.push({ day, time, date, class: cls, price });
+                    rows.push({ day, time, class: cls, price });
                 });
             });
 
