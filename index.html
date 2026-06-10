@@ -503,6 +503,13 @@
                     if (!schedule[row.day]) schedule[row.day] = [];
                     schedule[row.day].push({ id: row.id, time: row.time, date: row.date || null, class: row.class, price: row.price });
                 });
+            } else {
+                // Supabase е празна — запиши хардкодирания график
+                const rows = [];
+                Object.entries(schedule).forEach(([day, slots]) => {
+                    slots.forEach(slot => rows.push({ day, time: slot.time, class: slot.class, price: slot.price }));
+                });
+                if (rows.length > 0) await sb.from('schedule').insert(rows);
             }
 
             loadSchedule();
