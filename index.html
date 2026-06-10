@@ -325,6 +325,9 @@
 
                 <!-- Bookings Tab -->
                 <div id="bookings" class="tab-content active">
+                    <div style="margin-bottom:10px;">
+                        <input id="searchBookings" oninput="loadAdminBookings()" type="text" placeholder="Търси по име или телефон..." style="width:100%;padding:9px 12px;border:1px solid #ddd;border-radius:5px;font-family:Arial,sans-serif;font-size:14px;">
+                    </div>
                     <div style="display:flex; gap:10px; margin-bottom:15px; flex-wrap:wrap; align-items:center;">
                         <select id="filterDay" onchange="loadAdminBookings()" style="padding:8px; border:1px solid #ddd; border-radius:5px; font-family:Arial,sans-serif;">
                             <option value="">Всички дни</option>
@@ -769,17 +772,32 @@
             expires.setMonth(expires.getMonth() + 1);
             const expiresStr = expires.toISOString().split('T')[0];
 
-            const { error } = await sb.from('cards').insert([{
-                name,
-                phone,
-                card_type: `${currentCardType} тренировки`,
-                trainings_total: currentCardType,
-                trainings_used: 0,
-                expires_at: expiresStr,
-                active: false
-            }]);
+            // Провери за съществуваща активна карта от същия тип
+            const cardType = `${currentCardType} тренировки`;
+            const today = new Date().toISOString().split('T')[0];
+            const { data: existing } = await sb.from('cards').select('*')
+                .eq('phone', phone).eq('card_type', cardType).eq('active', true)
+                .gte('expires_at', today).order('expires_at', { ascending: false }).limit(1);
 
-            if (error) { alert('Грешка!'); return; }
+            if (existing && existing.length > 0) {
+                // Удължи съществуващата карта
+                const cur = existing[0];
+                const newTotal = cur.trainings_total + currentCardType;
+                const newExpiry = new Date(cur.expires_at);
+                newExpiry.setMonth(newExpiry.getMonth() + 1);
+                const { error } = await sb.from('cards').update({
+                    trainings_total: newTotal,
+                    expires_at: newExpiry.toISOString().split('T')[0]
+                }).eq('id', cur.id);
+                if (error) { alert('Грешка!'); return; }
+            } else {
+                const { error } = await sb.from('cards').insert([{
+                    name, phone, card_type: cardType,
+                    trainings_total: currentCardType, trainings_used: 0,
+                    expires_at: expiresStr, active: false
+                }]);
+                if (error) { alert('Грешка!'); return; }
+            }
 
             closeCardModal();
             document.getElementById('cardThankYouPage').style.display = 'block'; document.getElementById('cardThankYouPage').style.pointerEvents = 'auto';
@@ -1098,13 +1116,19 @@
         async function loadAdminBookings() {
             const filterDay = document.getElementById('filterDay')?.value || '';
             const filterClass = document.getElementById('filterClass')?.value || '';
+            const search = (document.getElementById('searchBookings')?.value || '').toLowerCase().trim();
 
             let query = sb.from('bookings').select('*').order('created_at', { ascending: false });
             if (filterDay) query = query.eq('day', filterDay);
             if (filterClass) query = query.eq('class', filterClass);
 
             const { data } = await query;
-            allBookings = data || [];
+            let bookings = data || [];
+            if (search) bookings = bookings.filter(b =>
+                (b.name || '').toLowerCase().includes(search) ||
+                (b.phone || '').includes(search)
+            );
+            allBookings = bookings;
             const countEl = document.getElementById('bookingsCount');
             if (countEl) countEl.textContent = allBookings.length + ' записани';
             const list = document.getElementById('bookingsList');
@@ -1277,6 +1301,7 @@
             { type: 'streak_5', icon: '🔥', name: 'На огън', desc: '5 тренировки' },
             { type: 'streak_10', icon: '🦁', name: 'Шампион', desc: '10 тренировки подред' },
             { type: 'training_20', icon: '🏆', name: 'Ветеран', desc: '20 тренировки общо' },
+            { type: 'training_50', icon: '👑', name: 'VIP', desc: '50 тренировки общо' },
             { type: 'card_owner', icon: '💎', name: 'Картодържател', desc: 'Купи карта' },
             { type: 'reviewer', icon: '💬', name: 'Гласът на залата', desc: 'Остави отзив' },
         ];
@@ -1292,6 +1317,7 @@
             if (total >= 5 && !earned.has('streak_5')) toAward.push('streak_5');
             if (total >= 10 && !earned.has('streak_10')) toAward.push('streak_10');
             if (total >= 20 && !earned.has('training_20')) toAward.push('training_20');
+            if (total >= 50 && !earned.has('training_50')) toAward.push('training_50');
             const { data: cards } = await sb.from('cards').select('id').eq('phone', phone);
             if (cards?.length > 0 && !earned.has('card_owner')) toAward.push('card_owner');
             for (const badge_type of toAward) {
@@ -1684,8 +1710,8 @@
             if (!bdgs || bdgs.length === 0) {
                 bEl.innerHTML = '<div class="empty">Нямаш значки още</div>';
             } else {
-                const icons = { first_training:'⭐', registered:'🎉', streak_5:'🔥', streak_10:'🦁', training_20:'🏆', card_owner:'💎', reviewer:'💬' };
-                const names = { first_training:'Първа стъпка', registered:'Добре дошъл', streak_5:'На огън', streak_10:'Лъв', training_20:'Шампион', card_owner:'Член', reviewer:'Критик' };
+                const icons = { first_training:'⭐', registered:'🎉', streak_5:'🔥', streak_10:'🦁', training_20:'🏆', training_50:'👑', card_owner:'💎', reviewer:'💬' };
+                const names = { first_training:'Първа стъпка', registered:'Добре дошъл', streak_5:'На огън', streak_10:'Лъв', training_20:'Шампион', training_50:'VIP', card_owner:'Член', reviewer:'Критик' };
                 bEl.innerHTML = bdgs.map(b => `
                     <div style="background:#fff3cd;padding:10px 14px;border-radius:20px;font-size:0.9rem;">
                         ${icons[b.badge_type]||'🏅'} ${names[b.badge_type]||b.badge_type}
@@ -1864,7 +1890,7 @@
     </section>
 
     <!-- Badges Section -->
-    <section style="padding:40px 20px; background:white;" id="badgesSection">
+    <section style="padding:40px 20px; background:white; display:none;" id="badgesSection">
         <div class="container">
             <h2 style="text-align:center; margin-bottom:30px;">Моите Значки</h2>
             <p id="badgesLoginMsg" style="text-align:center; color:#999;">Влез в акаунта си за да видиш значките си.</p>
