@@ -1694,19 +1694,25 @@
                     </div>`).join('');
             }
 
-            // Карта
-            const { data: cards } = await sb.from('cards').select('*').eq('phone', phone).eq('active', true).order('created_at', { ascending: false }).limit(1);
+            // Карта — показвай всички (активни и чакащи)
+            const { data: cards } = await sb.from('cards').select('*').eq('phone', phone).order('created_at', { ascending: false }).limit(3);
             const cEl = document.getElementById('profileCard');
             if (!cards || cards.length === 0) {
-                cEl.innerHTML = '<div class="empty">Нямаш активна карта</div>';
+                cEl.innerHTML = '<div class="empty">Нямаш карта</div>';
             } else {
-                const c = cards[0];
-                const left = c.trainings_total - c.trainings_used;
-                cEl.innerHTML = `<div style="background:#f5f5f5;padding:12px;border-radius:8px;">
-                    <strong>${c.card_type}</strong>
-                    <div style="margin-top:5px;">Оставащи тренировки: <strong style="color:var(--primary);">${left}</strong> / ${c.trainings_total}</div>
-                    <div style="font-size:0.85rem;color:#999;margin-top:3px;">Валидна до: ${c.expires_at || '—'}</div>
-                </div>`;
+                cEl.innerHTML = cards.map(c => {
+                    const left = c.trainings_total - c.trainings_used;
+                    const statusColor = c.active ? '#27ae60' : '#e67e22';
+                    const statusText = c.active ? 'Активна' : '⏳ Очаква активиране';
+                    return `<div style="background:#f5f5f5;padding:12px;border-radius:8px;margin-bottom:8px;">
+                        <div style="display:flex;justify-content:space-between;align-items:center;">
+                            <strong>${c.card_type}</strong>
+                            <span style="font-size:0.8rem;color:${statusColor};font-weight:bold;">${statusText}</span>
+                        </div>
+                        ${c.active ? `<div style="margin-top:5px;">Оставащи: <strong style="color:var(--primary);">${left}</strong> / ${c.trainings_total}</div>` : ''}
+                        <div style="font-size:0.85rem;color:#999;margin-top:3px;">Валидна до: ${c.expires_at || '—'}</div>
+                    </div>`;
+                }).join('');
             }
 
             // Значки
