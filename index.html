@@ -282,6 +282,15 @@
         <div id="scheduleList"></div>
     </section>
 
+    <!-- Leaderboard Section -->
+    <section style="padding:50px 20px; background:#f9f9f9;">
+        <div class="container" style="max-width:680px;">
+            <h2 style="text-align:center; margin-bottom:8px;">🏅 Класация</h2>
+            <p style="text-align:center; color:#888; margin-bottom:30px; font-size:0.95rem;">Кой има най-много тренировки</p>
+            <div id="leaderboardList"></div>
+        </div>
+    </section>
+
     <!-- Thank You Page -->
     <div id="thankYouPage" style="display:none; pointer-events:none; position:fixed; top:0; left:0; width:100%; height:100%; background:white; z-index:2000; overflow-y:auto;">
         <div style="max-width:600px; margin:0 auto; padding:60px 20px; text-align:center;">
@@ -1543,6 +1552,7 @@
         loadVideos();
         loadReviews();
         loadStats();
+        loadLeaderboard();
         requestNotificationPermission();
         document.getElementById('cardThankYouPage').style.display = 'none'; document.getElementById('cardThankYouPage').style.pointerEvents = 'none';
         document.getElementById('thankYouPage').style.display = 'none'; document.getElementById('thankYouPage').style.pointerEvents = 'none';
@@ -1682,6 +1692,7 @@
 
             // Записвания
             const { data: bks } = await sb.from('bookings').select('*').eq('phone', phone).order('created_at', { ascending: false });
+            loadMonthlyGoal(bks);
             const bList = document.getElementById('profileBookings');
             if (!bks || bks.length === 0) {
                 bList.innerHTML = '<div class="empty">Нямаш записвания</div>';
@@ -1735,6 +1746,79 @@
             if (!confirm('Сигурен ли си?')) return;
             await sb.from('bookings').delete().eq('id', id);
             loadProfileData();
+        }
+
+        // Monthly Goal
+        function loadMonthlyGoal(bks) {
+            const phone = currentUser?.user_metadata?.phone || currentUser?.email;
+            const goal = parseInt(localStorage.getItem('monthlyGoal_' + phone)) || 0;
+            const inp = document.getElementById('goalInput');
+            if (inp) inp.value = goal || '';
+            const now = new Date();
+            const thisMonth = (bks || []).filter(b => {
+                const d = new Date(b.created_at);
+                return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+            }).length;
+            const el = document.getElementById('goalProgress');
+            if (!el) return;
+            if (!goal) {
+                el.innerHTML = '<div class="empty" style="font-size:0.9rem;">Постави месечна цел 👆</div>';
+                return;
+            }
+            const pct = Math.min(100, Math.round(thisMonth / goal * 100));
+            const color = pct >= 100 ? '#27ae60' : pct >= 50 ? 'var(--primary)' : '#e67e22';
+            el.innerHTML = `
+                <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+                    <span style="font-size:0.9rem;color:#555;">${thisMonth} от ${goal} тренировки</span>
+                    <span style="font-weight:bold;color:${color};">${pct}%</span>
+                </div>
+                <div style="background:#eee;border-radius:20px;height:12px;overflow:hidden;">
+                    <div style="background:${color};height:100%;width:${pct}%;border-radius:20px;transition:width 0.6s;"></div>
+                </div>
+                <div style="text-align:right;margin-top:6px;font-size:0.85rem;color:#999;">
+                    ${pct >= 100 ? '🎉 Целта е постигната!' : 'Остават ' + (goal - thisMonth) + ' тренировки'}
+                </div>`;
+        }
+
+        function saveMonthlyGoal() {
+            const phone = currentUser?.user_metadata?.phone || currentUser?.email;
+            const val = parseInt(document.getElementById('goalInput').value);
+            if (!val || val < 1) { alert('Въведи валидна цел (1–30)!'); return; }
+            localStorage.setItem('monthlyGoal_' + phone, val);
+            loadProfileData();
+        }
+
+        // Leaderboard
+        async function loadLeaderboard() {
+            const el = document.getElementById('leaderboardList');
+            if (!el) return;
+            const { data } = await sb.from('bookings').select('name, phone');
+            if (!data || data.length === 0) { el.innerHTML = '<div class="empty">Няма данни</div>'; return; }
+            const counts = {};
+            data.forEach(b => {
+                const key = b.phone || b.name;
+                if (!counts[key]) counts[key] = { name: b.name, count: 0 };
+                counts[key].count++;
+            });
+            const sorted = Object.values(counts).sort((a, b) => b.count - a.count).slice(0, 10);
+            const medals = ['🥇', '🥈', '🥉'];
+            el.innerHTML = sorted.map((u, i) => {
+                const parts = (u.name || 'Потребител').split(' ');
+                const display = parts[0] + (parts[1] ? ' ' + parts[1][0] + '.' : '');
+                const pct = Math.round(u.count / sorted[0].count * 100);
+                const color = i === 0 ? '#f1c40f' : i === 1 ? '#bdc3c7' : i === 2 ? '#cd7f32' : 'var(--primary)';
+                return `
+                    <div style="display:flex;align-items:center;gap:14px;background:white;border-radius:12px;padding:14px 18px;margin-bottom:10px;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+                        <span style="font-size:1.4rem;min-width:32px;text-align:center;">${medals[i] || (i + 1) + '.'}</span>
+                        <div style="flex:1;min-width:0;">
+                            <div style="font-weight:bold;margin-bottom:5px;">${display}</div>
+                            <div style="background:#eee;border-radius:10px;height:7px;overflow:hidden;">
+                                <div style="background:${color};height:100%;width:${pct}%;border-radius:10px;"></div>
+                            </div>
+                        </div>
+                        <span style="font-weight:bold;color:${color};white-space:nowrap;">${u.count} 🏋️</span>
+                    </div>`;
+            }).join('');
         }
 
     </script>
@@ -2013,9 +2097,20 @@
             </div>
 
             <!-- My badges -->
-            <div style="background:white;padding:20px;border-radius:12px;box-shadow:0 2px 10px rgba(0,0,0,0.06);">
+            <div style="background:white;padding:20px;border-radius:12px;margin-bottom:20px;box-shadow:0 2px 10px rgba(0,0,0,0.06);">
                 <h3 style="margin-bottom:15px; color:var(--dark);">Моите значки</h3>
                 <div id="profileBadges" style="display:flex;flex-wrap:wrap;gap:10px;"></div>
+            </div>
+
+            <!-- Monthly Goal -->
+            <div style="background:white;padding:20px;border-radius:12px;box-shadow:0 2px 10px rgba(0,0,0,0.06);">
+                <h3 style="margin-bottom:15px; color:var(--dark);">🎯 Месечна цел</h3>
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:15px;flex-wrap:wrap;">
+                    <span style="color:#666;font-size:0.9rem;">Тренировки за месеца:</span>
+                    <input id="goalInput" type="number" min="1" max="30" placeholder="брой" style="width:65px;padding:8px;border:1px solid #ddd;border-radius:8px;font-size:1rem;text-align:center;">
+                    <button onclick="saveMonthlyGoal()" class="btn" style="padding:8px 18px;font-size:0.9rem;">Запази</button>
+                </div>
+                <div id="goalProgress"></div>
             </div>
         </div>
     </div>
