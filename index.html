@@ -316,12 +316,13 @@
         <div class="container" style="max-width:900px; padding:25px 20px;">
 
             <!-- Login Form -->
-            <div id="loginForm" style="display:flex; justify-content:center; margin-top:60px;">
-                <div style="background:white; border-radius:16px; padding:40px; max-width:400px; width:100%; box-shadow:0 4px 20px rgba(0,0,0,0.1); text-align:center;">
-                    <h2 style="margin-bottom:20px;">Вход</h2>
-                    <label style="display:block; text-align:left; margin-bottom:6px;">Парола:</label>
-                    <input type="password" id="password" placeholder="Въведи парола" style="width:100%; padding:10px; border:1px solid #ddd; border-radius:8px; font-size:1rem; box-sizing:border-box;">
-                    <button class="btn" style="width:100%; margin-top:20px;" onclick="loginAdmin()">Влез</button>
+            <div id="loginForm" style="display:flex; justify-content:center; margin-top:80px;">
+                <div style="background:white; border-radius:20px; padding:50px 45px; max-width:440px; width:100%; box-shadow:0 8px 30px rgba(0,0,0,0.1); text-align:center;">
+                    <div style="font-size:2.5rem; margin-bottom:15px;">🔐</div>
+                    <h2 style="margin-bottom:8px; font-size:1.7rem;">Админ Вход</h2>
+                    <p style="color:#999; margin-bottom:30px; font-size:0.95rem;">Въведи паролата за достъп</p>
+                    <input type="password" id="password" placeholder="Парола" style="width:100%; padding:15px 18px; border:1px solid #ddd; border-radius:12px; font-size:1.1rem; box-sizing:border-box; margin-bottom:20px;" onkeydown="if(event.key==='Enter') loginAdmin()">
+                    <button class="btn" style="width:100%; padding:15px; font-size:1.05rem;" onclick="loginAdmin()">Влез</button>
                 </div>
             </div>
 
@@ -558,11 +559,12 @@
 
         // Auth функции
         function openAuthModal() {
-            document.getElementById('authModal').classList.add('active');
+            document.getElementById('authModal').style.display = 'block';
+            window.scrollTo(0, 0);
         }
 
         function closeAuthModal() {
-            document.getElementById('authModal').classList.remove('active');
+            document.getElementById('authModal').style.display = 'none';
         }
 
         function switchAuthTab(tab) {
@@ -1822,48 +1824,54 @@
         }
 
     </script>
-    <!-- Auth Modal -->
-    <div id="authModal" class="modal">
-        <div class="modal-content">
-            <span class="close-btn" onclick="closeAuthModal()">✕</span>
+    <!-- Auth Page (full screen) -->
+    <div id="authModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:var(--light); z-index:2000; overflow-y:auto;">
+        <div style="background:linear-gradient(135deg, var(--dark), #2d2d30); color:white; padding:20px 25px; display:flex; align-items:center; justify-content:space-between; position:sticky; top:0; z-index:10;">
+            <h2 style="margin:0; font-size:1.3rem;">🔑 Профил</h2>
+            <button onclick="closeAuthModal()" style="background:transparent; color:white; border:1px solid rgba(255,255,255,0.4); padding:6px 16px; border-radius:15px; cursor:pointer; font-size:0.9rem;">← Назад</button>
+        </div>
+        <div style="display:flex; justify-content:center; padding:40px 20px;">
+            <div style="background:white; border-radius:20px; padding:40px 35px; max-width:460px; width:100%; box-shadow:0 8px 30px rgba(0,0,0,0.1);">
 
-            <div class="tabs" style="margin-bottom:25px;">
-                <button class="tab-btn active" onclick="switchAuthTab('login')">Вход</button>
-                <button class="tab-btn" onclick="switchAuthTab('register')">Регистрация</button>
-            </div>
+                <div class="tabs" style="margin-bottom:30px;">
+                    <button class="tab-btn active" onclick="switchAuthTab('login')">Вход</button>
+                    <button class="tab-btn" onclick="switchAuthTab('register')">Регистрация</button>
+                </div>
 
-            <!-- Login -->
-            <div id="loginTab" class="tab-content active">
-                <h2 style="margin-bottom:20px;">Вход</h2>
-                <form onsubmit="loginUser(event)">
-                    <label>Email:</label>
-                    <input type="email" id="loginEmail" required placeholder="email@example.com">
-                    <label>Парола:</label>
-                    <input type="password" id="loginPassword" required placeholder="Парола">
-                    <button type="submit" class="btn" style="width:100%; margin-top:20px;">Влез</button>
-                </form>
-            </div>
+                <!-- Login -->
+                <div id="loginTab" class="tab-content active">
+                    <h2 style="margin-bottom:25px; font-size:1.6rem;">Вход</h2>
+                    <form onsubmit="loginUser(event)">
+                        <label style="font-size:1rem; margin-bottom:6px; display:block;">Email:</label>
+                        <input type="email" id="loginEmail" required placeholder="email@example.com" style="font-size:1rem; padding:13px 15px; margin-bottom:15px;">
+                        <label style="font-size:1rem; margin-bottom:6px; display:block;">Парола:</label>
+                        <input type="password" id="loginPassword" required placeholder="Парола" style="font-size:1rem; padding:13px 15px; margin-bottom:5px;">
+                        <button type="submit" class="btn" style="width:100%; margin-top:25px; padding:15px; font-size:1.05rem;">Влез</button>
+                    </form>
+                </div>
 
-            <!-- Register -->
-            <div id="registerTab" class="tab-content">
-                <h2 style="margin-bottom:20px;">Регистрация</h2>
-                <form onsubmit="registerUser(event)">
-                    <label>Име:</label>
-                    <input type="text" id="regName" required>
-                    <label>Фамилия:</label>
-                    <input type="text" id="regSurname" required>
-                    <label>Телефон:</label>
-                    <input type="tel" id="regPhone" required>
-                    <label>Email:</label>
-                    <input type="email" id="regEmail" required placeholder="email@example.com">
-                    <label>Парола:</label>
-                    <input type="password" id="regPassword" required placeholder="Минимум 6 символа">
-                    <div style="margin-top:10px; display:flex; align-items:center; gap:10px; background:#f0f8ff; padding:12px; border-radius:8px;">
-                        <input type="checkbox" id="regIsChild" style="width:20px; height:20px; cursor:pointer;">
-                        <label for="regIsChild" style="cursor:pointer; font-weight:500; margin:0;">Дете съм</label>
-                    </div>
-                    <button type="submit" class="btn" style="width:100%; margin-top:20px;">Регистрирай се</button>
-                </form>
+                <!-- Register -->
+                <div id="registerTab" class="tab-content">
+                    <h2 style="margin-bottom:25px; font-size:1.6rem;">Регистрация</h2>
+                    <form onsubmit="registerUser(event)">
+                        <label style="font-size:1rem; margin-bottom:6px; display:block;">Ime:</label>
+                        <input type="text" id="regName" required style="font-size:1rem; padding:13px 15px; margin-bottom:15px;">
+                        <label style="font-size:1rem; margin-bottom:6px; display:block;">Фамилия:</label>
+                        <input type="text" id="regSurname" required style="font-size:1rem; padding:13px 15px; margin-bottom:15px;">
+                        <label style="font-size:1rem; margin-bottom:6px; display:block;">Телефон:</label>
+                        <input type="tel" id="regPhone" required style="font-size:1rem; padding:13px 15px; margin-bottom:15px;">
+                        <label style="font-size:1rem; margin-bottom:6px; display:block;">Email:</label>
+                        <input type="email" id="regEmail" required placeholder="email@example.com" style="font-size:1rem; padding:13px 15px; margin-bottom:15px;">
+                        <label style="font-size:1rem; margin-bottom:6px; display:block;">Парола:</label>
+                        <input type="password" id="regPassword" required placeholder="Минимум 6 символа" style="font-size:1rem; padding:13px 15px; margin-bottom:15px;">
+                        <div style="display:flex; align-items:center; gap:12px; background:#f0f8ff; padding:14px; border-radius:10px;">
+                            <input type="checkbox" id="regIsChild" style="width:22px; height:22px; cursor:pointer;">
+                            <label for="regIsChild" style="cursor:pointer; font-weight:500; margin:0; font-size:1rem;">Дете съм</label>
+                        </div>
+                        <button type="submit" class="btn" style="width:100%; margin-top:25px; padding:15px; font-size:1.05rem;">Регистрирай се</button>
+                    </form>
+                </div>
+
             </div>
         </div>
     </div>
