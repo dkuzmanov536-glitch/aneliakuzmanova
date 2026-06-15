@@ -1187,7 +1187,32 @@
             `).join('');
         }
 
+        async function cleanupOldBookings() {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const dayOfWeek = today.getDay();
+            const monday = new Date(today);
+            monday.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+
+            const { data: all } = await sb.from('bookings').select('id, date, created_at');
+            if (!all) return;
+
+            const toDelete = all.filter(b => {
+                if (b.date) {
+                    const d = parseBgDate(b.date);
+                    return d && d < today;
+                } else {
+                    return new Date(b.created_at) < monday;
+                }
+            }).map(b => b.id);
+
+            if (toDelete.length > 0) {
+                await sb.from('bookings').delete().in('id', toDelete);
+            }
+        }
+
         async function loadBookingsList() {
+            await cleanupOldBookings();
             await loadAdminBookings();
         }
 
