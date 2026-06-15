@@ -343,6 +343,10 @@
                             <option>Аеробика и Табата</option>
                             <option>РГ и Мобилност</option>
                         </select>
+                        <select id="sortBookings" onchange="loadAdminBookings()" style="padding:8px; border:1px solid #ddd; border-radius:5px; font-family:Arial,sans-serif;">
+                            <option value="desc">Най-нови първо</option>
+                            <option value="asc">Най-стари първо</option>
+                        </select>
                         <span id="bookingsCount" style="padding:6px 12px; background:var(--primary); color:#fff; border-radius:20px; font-size:14px; font-weight:bold;"></span>
                     </div>
                     <div class="bookings-list" id="bookingsList"></div>
@@ -1117,8 +1121,9 @@
             const filterDay = document.getElementById('filterDay')?.value || '';
             const filterClass = document.getElementById('filterClass')?.value || '';
             const search = (document.getElementById('searchBookings')?.value || '').toLowerCase().trim();
+            const sortDir = document.getElementById('sortBookings')?.value !== 'asc';
 
-            let query = sb.from('bookings').select('*').order('created_at', { ascending: false });
+            let query = sb.from('bookings').select('*').order('created_at', { ascending: !sortDir });
             if (filterDay) query = query.eq('day', filterDay);
             if (filterClass) query = query.eq('class', filterClass);
 
