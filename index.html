@@ -357,8 +357,8 @@
                             <option>РГ и Мобилност</option>
                         </select>
                         <select id="sortBookings" onchange="loadAdminBookings()" style="padding:8px; border:1px solid #ddd; border-radius:5px; font-family:Arial,sans-serif;">
-                            <option value="desc">Най-нови първо</option>
-                            <option value="asc">Най-стари първо</option>
+                            <option value="asc">По-ранна дата първо</option>
+                            <option value="desc">По-късна дата първо</option>
                         </select>
                         <span id="bookingsCount" style="padding:6px 12px; background:var(--primary); color:#fff; border-radius:20px; font-size:14px; font-weight:bold;"></span>
                     </div>
@@ -440,6 +440,7 @@
                 <input type="tel" id="bookingPhone" required>
                 <label>Ден:</label>
                 <input type="text" id="bookingDay" readonly>
+                <input type="hidden" id="bookingDate">
                 <label>Час:</label>
                 <input type="text" id="bookingTime" readonly>
                 <label>Тренировка:</label>
@@ -973,7 +974,7 @@
                             </div>
                             <div class="slot-price" style="display:none">${slot.price}€</div>
                             <div>
-                                <button class="btn" onclick="openBookingModal('${day}', '${slot.time}', '${slot.class}', ${slot.price})" ${full ? 'disabled style="background:#ccc;cursor:not-allowed;"' : ''}>
+                                <button class="btn" onclick="openBookingModal('${day}', '${slot.time}', '${slot.class}', ${slot.price}, '${slot.date || ''}')" ${full ? 'disabled style="background:#ccc;cursor:not-allowed;"' : ''}>
                                     ${full ? 'Няма места' : 'Запиши се'}
                                 </button>
                                 <div style="font-size: 0.85rem; color: ${full ? '#e74c3c' : '#333'}; margin-top: 5px; text-align: center;">
@@ -1000,9 +1001,10 @@
             }
         }
 
-        function openBookingModal(day, time, cls, price) {
+        function openBookingModal(day, time, cls, price, date) {
             originalPrice = price;
             document.getElementById('bookingDay').value = day;
+            document.getElementById('bookingDate').value = date || '';
             document.getElementById('bookingTime').value = time;
             document.getElementById('bookingClass').value = cls;
 
@@ -1029,6 +1031,7 @@
                 name: document.getElementById('bookingName').value + ' ' + document.getElementById('bookingSurname').value,
                 phone: document.getElementById('bookingPhone').value,
                 day: document.getElementById('bookingDay').value,
+                date: document.getElementById('bookingDate').value || null,
                 time: document.getElementById('bookingTime').value,
                 class: document.getElementById('bookingClass').value,
                 price: document.getElementById('bookingPrice').value,
@@ -1132,13 +1135,20 @@
             event.target.classList.add('active');
         }
 
+        function parseBgDate(s) {
+            if (!s) return null;
+            const [d, m, y] = s.split('.');
+            if (!d || !m || !y) return null;
+            return new Date(+y, +m - 1, +d);
+        }
+
         async function loadAdminBookings() {
             const filterDay = document.getElementById('filterDay')?.value || '';
             const filterClass = document.getElementById('filterClass')?.value || '';
             const search = (document.getElementById('searchBookings')?.value || '').toLowerCase().trim();
-            const sortDir = document.getElementById('sortBookings')?.value !== 'asc';
+            const sortDir = document.getElementById('sortBookings')?.value || 'asc';
 
-            let query = sb.from('bookings').select('*').order('created_at', { ascending: !sortDir });
+            let query = sb.from('bookings').select('*');
             if (filterDay) query = query.eq('day', filterDay);
             if (filterClass) query = query.eq('class', filterClass);
 
@@ -1148,6 +1158,15 @@
                 (b.name || '').toLowerCase().includes(search) ||
                 (b.phone || '').includes(search)
             );
+
+            bookings.sort((a, b) => {
+                const da = parseBgDate(a.date);
+                const db = parseBgDate(b.date);
+                if (!da && !db) return 0;
+                if (!da) return 1;
+                if (!db) return -1;
+                return sortDir === 'asc' ? da - db : db - da;
+            });
             allBookings = bookings;
             const countEl = document.getElementById('bookingsCount');
             if (countEl) countEl.textContent = allBookings.length + ' записани';
@@ -1854,7 +1873,7 @@
                 <div id="registerTab" class="tab-content">
                     <h2 style="margin-bottom:25px; font-size:1.6rem;">Регистрация</h2>
                     <form onsubmit="registerUser(event)">
-                        <label style="font-size:1rem; margin-bottom:6px; display:block;">Ime:</label>
+                        <label style="font-size:1rem; margin-bottom:6px; display:block;">Име:</label>
                         <input type="text" id="regName" required style="font-size:1rem; padding:13px 15px; margin-bottom:15px;">
                         <label style="font-size:1rem; margin-bottom:6px; display:block;">Фамилия:</label>
                         <input type="text" id="regSurname" required style="font-size:1rem; padding:13px 15px; margin-bottom:15px;">
