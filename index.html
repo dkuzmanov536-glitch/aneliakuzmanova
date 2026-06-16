@@ -1143,13 +1143,12 @@
             const search = (document.getElementById('searchBookings')?.value || '').toLowerCase().trim();
             const sortDir = document.getElementById('sortBookings')?.value || 'asc';
 
-            let query = sb.from('bookings').select('*');
+            let query = sb.from('bookings').select('*').eq('is_deleted', bookingsView === 'expired');
             if (filterDay) query = query.eq('day', filterDay);
             if (filterClass) query = query.eq('class', filterClass);
 
             const { data } = await query;
             let bookings = data || [];
-            bookings = bookings.filter(b => bookingsView === 'expired' ? isExpiredBooking(b) : !isExpiredBooking(b));
             if (search) bookings = bookings.filter(b =>
                 (b.name || '').toLowerCase().includes(search) ||
                 (b.phone || '').includes(search)
@@ -1172,13 +1171,16 @@
                 return;
             }
             list.innerHTML = allBookings.map(b => `
-                <div class="booking-item" style="border-left-color: ${b.is_child ? '#e67e22' : 'var(--primary)'}">
+                <div class="booking-item" style="border-left-color: ${b.is_deleted ? '#bbb' : b.is_child ? '#e67e22' : 'var(--primary)'}">
                     <strong>${b.name} ${b.is_child ? '👶 ДЕТЕ' : ''}</strong>
                     <small>📞 ${b.phone}</small>
-                    <small>${b.day} - ${b.time}</small>
+                    <small>${b.day}${b.date ? ' (' + b.date + ')' : ''} - ${b.time}</small>
                     <small>${b.class} (${b.price}) ${b.payment ? '| ' + b.payment : ''}</small>
                     <small style="color: #999;">${b.created_at ? new Date(b.created_at).toLocaleString('bg-BG') : ''}</small>
-                    <button class="delete-btn" onclick="deleteBooking(${b.id}, '${(b.name||'').replace(/'/g,"\\'")}', '${b.day}', '${b.time}')">Изтрий</button>
+                    ${bookingsView === 'expired'
+                        ? `<button onclick="restoreBooking(${b.id})" style="background:#27ae60;color:white;border:none;padding:5px 12px;border-radius:5px;cursor:pointer;font-size:0.85rem;">↩ Върни</button>`
+                        : `<button class="delete-btn" onclick="deleteBooking(${b.id}, '${(b.name||'').replace(/'/g,"\\'")}', '${b.day}', '${b.time}')">Изтрий</button>`
+                    }
                 </div>
             `).join('');
         }
@@ -1194,27 +1196,38 @@
             loadAdminBookings();
         }
 
-        function isExpiredBooking(b) {
-            if (b.date) {
-                const d = parseBgDate(b.date);
-                const today = new Date(); today.setHours(0,0,0,0);
-                return d && d < today;
+        async function cleanupOldBookings() {
+            const today = new Date(); today.setHours(0,0,0,0);
+            const dayOfWeek = today.getDay();
+            const monday = new Date(today);
+            monday.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+
+            const { data: all } = await sb.from('bookings').select('id, date, created_at').eq('is_deleted', false);
+            if (!all) return;
+            const toMark = all.filter(b => {
+                if (b.date) { const d = parseBgDate(b.date); return d && d < today; }
+                return new Date(b.created_at) < monday;
+            }).map(b => b.id);
+            if (toMark.length > 0) {
+                await sb.from('bookings').update({ is_deleted: true }).in('id', toMark);
             }
-            const dayOfWeek = new Date().getDay();
-            const monday = new Date(); monday.setHours(0,0,0,0);
-            monday.setDate(monday.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
-            return new Date(b.created_at) < monday;
         }
 
         async function loadBookingsList() {
+            await cleanupOldBookings();
             await loadAdminBookings();
         }
 
         async function deleteBooking(id, name, day, time) {
             if (confirm(`Изтриване на записване:\n\n👤 ${name}\n📅 ${day} - ${time}\n\nСигурен ли си?`)) {
-                await sb.from('bookings').delete().eq('id', id);
+                await sb.from('bookings').update({ is_deleted: true }).eq('id', id);
                 await loadAdminBookings();
             }
+        }
+
+        async function restoreBooking(id) {
+            await sb.from('bookings').update({ is_deleted: false }).eq('id', id);
+            await loadAdminBookings();
         }
 
         function loadScheduleEdit() {
