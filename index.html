@@ -1173,7 +1173,7 @@
                     <small>${b.day} - ${b.time}</small>
                     <small>${b.class} (${b.price}) ${b.payment ? '| ' + b.payment : ''}</small>
                     <small style="color: #999;">${b.created_at ? new Date(b.created_at).toLocaleString('bg-BG') : ''}</small>
-                    <button class="delete-btn" onclick="deleteBooking(${b.id})">Изтрий</button>
+                    <button class="delete-btn" onclick="deleteBooking(${b.id}, '${(b.name||'').replace(/'/g,"\\'")}', '${b.day}', '${b.time}')">Изтрий</button>
                 </div>
             `).join('');
         }
@@ -1207,10 +1207,10 @@
             await loadAdminBookings();
         }
 
-        async function deleteBooking(id) {
-            if (confirm('Сигурен ли си?')) {
+        async function deleteBooking(id, name, day, time) {
+            if (confirm(`Изтриване на записване:\n\n👤 ${name}\n📅 ${day} - ${time}\n\nСигурен ли си?`)) {
                 await sb.from('bookings').delete().eq('id', id);
-                await loadBookingsList();
+                await loadAdminBookings();
             }
         }
 
