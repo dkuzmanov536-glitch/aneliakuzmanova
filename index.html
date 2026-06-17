@@ -78,14 +78,28 @@
         .btn:hover { transform: translateY(-2px); }
         .btn-admin {
             position: fixed;
-            bottom: 30px;
-            right: 30px;
-            width: 60px;
-            height: 60px;
+            bottom: 85px;
+            right: 20px;
+            width: 52px;
+            height: 52px;
             border-radius: 50%;
-            font-size: 1.5rem;
-            z-index: 100;
+            font-size: 1.3rem;
+            z-index: 1490;
         }
+        #bottomNav {
+            position: fixed; bottom: 0; left: 0; width: 100%;
+            background: var(--dark); display: flex; z-index: 1500;
+            border-top: 1px solid rgba(255,255,255,0.12);
+        }
+        #bottomNav button {
+            flex: 1; padding: 10px 5px 12px; background: transparent;
+            color: rgba(255,255,255,0.45); border: none; cursor: pointer;
+            font-size: 0.68rem; font-weight: bold; display: flex;
+            flex-direction: column; align-items: center; gap: 4px;
+            transition: color 0.2s; line-height: 1;
+        }
+        #bottomNav button .ni { font-size: 1.35rem; }
+        #bottomNav button.nav-active { color: var(--primary); }
         .modal {
             display: none;
             position: fixed;
@@ -237,7 +251,7 @@
 </head>
 <body>
     <!-- Hero -->
-    <div class="hero">
+    <div class="hero" data-page="home">
         <h1>Движение и Здраве с Анелия</h1>
         <p>Трансформирай тялото си с професионални тренировки</p>
         <div style="margin-top:25px;">
@@ -251,7 +265,7 @@
     </div>
 
     <!-- Classes -->
-    <section id="classes" class="container">
+    <section id="classes" class="container" data-page="home">
         <h2 style="text-align: center; margin-bottom: 20px;">Видове тренировки</h2>
         <p style="text-align:center; color:#e67e22; margin-bottom:30px;">⚠️ Децата тренират на 50% отстъпка</p>
         <div class="classes-grid">
@@ -277,7 +291,7 @@
     </section>
 
     <!-- Schedule -->
-    <section id="schedule" class="schedule container">
+    <section id="schedule" class="schedule container" data-page="home">
         <h2 style="text-align: center; margin-bottom: 40px;">Седмичен График</h2>
         <div id="scheduleList"></div>
     </section>
@@ -1600,7 +1614,23 @@
             `).join('');
         }
 
+        // Bottom nav page switching
+        function showPage(page) {
+            if (page === 'profile') {
+                openProfileModal();
+                return;
+            }
+            document.querySelectorAll('[data-page]').forEach(el => {
+                el.style.display = el.dataset.page === page ? '' : 'none';
+            });
+            document.querySelectorAll('#bottomNav button').forEach(btn => {
+                btn.classList.toggle('nav-active', btn.dataset.nav === page);
+            });
+            window.scrollTo(0, 0);
+        }
+
         // Initialize
+        showPage('home');
         loadData();
         loadVideos();
         loadReviews();
@@ -1715,16 +1745,22 @@
 
         // ---- #4: Моят Профил ----
         function openProfileModal() {
-            if (!currentUser) return;
+            if (!currentUser) { openAuthModal(); return; }
             document.getElementById('profilePage').style.display = 'block';
             window.scrollTo(0, 0);
             document.getElementById('profileName').value = currentUser.user_metadata?.name || '';
             document.getElementById('profilePhone').value = currentUser.user_metadata?.phone || '';
             loadProfileData();
+            document.querySelectorAll('#bottomNav button').forEach(btn => {
+                btn.classList.toggle('nav-active', btn.dataset.nav === 'profile');
+            });
         }
 
         function closeProfilePage() {
             document.getElementById('profilePage').style.display = 'none';
+            document.querySelectorAll('#bottomNav button').forEach(btn => {
+                btn.classList.toggle('nav-active', btn.dataset.nav === 'home');
+            });
         }
 
         async function saveProfileData() {
@@ -1949,7 +1985,7 @@
     </div>
 
     <!-- Unsubscribe Section -->
-    <section style="padding:40px 20px; background:#fff8f0;">
+    <section style="padding:40px 20px; background:#fff8f0;" data-page="home">
         <div class="container" style="max-width:600px;">
             <h2 style="text-align:center; margin-bottom:10px;">Отпиши се от тренировка</h2>
             <p style="text-align:center; color:#666; margin-bottom:25px;">Въведи телефона си, за да видиш записванията си</p>
@@ -1962,7 +1998,7 @@
     </section>
 
     <!-- Cards Section -->
-    <section id="cards" style="padding: 60px 20px; background: var(--light);">
+    <section id="cards" style="padding: 60px 20px 100px; background: var(--light);" data-page="cards">
         <div class="container">
             <h2 style="text-align:center; margin-bottom:10px;">Карти за Тренировки</h2>
             <p style="text-align:center; color:#e67e22; margin-bottom:30px;">⚠️ Децата тренират на 50% отстъпка</p>
@@ -2020,7 +2056,7 @@
     </section>
 
     <!-- Reviews Section -->
-    <section style="padding:60px 20px; background:white;">
+    <section style="padding:60px 20px; background:white;" data-page="home">
         <div class="container">
             <h2 style="text-align:center; margin-bottom:10px;">Отзиви</h2>
             <p style="text-align:center; color:#666; margin-bottom:30px;">Какво казват нашите клиенти</p>
@@ -2050,7 +2086,7 @@
     </section>
 
     <!-- Location Section -->
-    <section style="padding:60px 20px; background:#f5f5f5;">
+    <section style="padding:60px 20px; background:#f5f5f5;" data-page="home">
         <div class="container">
             <h2 style="text-align:center; margin-bottom:10px;">Къде се намираме</h2>
             <p style="text-align:center; color:#666; margin-bottom:30px;">Елена, България</p>
@@ -2069,7 +2105,7 @@
     </section>
 
     <!-- Videos Section -->
-    <section id="videos" style="padding: 60px 20px; background: #1A1A1D;">
+    <section id="videos" style="padding: 60px 20px 100px; background: #1A1A1D;" data-page="videos">
         <div class="container">
             <h2 style="text-align:center; margin-bottom:10px; color:white; font-size:2rem;">Видео Галерия</h2>
             <p style="text-align:center; color:#aaa; margin-bottom:40px;">Погледни как изглеждат нашите тренировки</p>
@@ -2080,9 +2116,25 @@
     </section>
 
     <!-- Footer -->
-    <footer style="background: #1A1A1D; color: white; text-align: center; padding: 20px;">
+    <footer style="background: #1A1A1D; color: white; text-align: center; padding: 20px 20px 90px;" data-page="home">
         <p style="opacity: 0.6; font-size: 0.9rem;">Изработка: Dimitar Kuzmanov</p>
     </footer>
+
+    <!-- Bottom Nav -->
+    <nav id="bottomNav">
+        <button class="nav-active" onclick="showPage('home')" data-nav="home">
+            <span class="ni">🏠</span>Начало
+        </button>
+        <button onclick="showPage('cards')" data-nav="cards">
+            <span class="ni">💳</span>Карти
+        </button>
+        <button onclick="showPage('videos')" data-nav="videos">
+            <span class="ni">🎬</span>Видеа
+        </button>
+        <button onclick="showPage('profile')" data-nav="profile">
+            <span class="ni">👤</span>Профил
+        </button>
+    </nav>
 
     <!-- Profile Modal -->
     <!-- Profile Page (full screen) -->
