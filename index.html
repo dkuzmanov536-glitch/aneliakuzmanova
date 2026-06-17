@@ -251,17 +251,13 @@
 </head>
 <body>
     <!-- Hero -->
+    <!-- Hidden auth state elements used by JS -->
+    <span id="authBtn" style="display:none;"></span>
+    <span id="userInfo" style="display:none;"><span id="userName"></span></span>
+
     <div class="hero" data-page="home">
         <h1>Движение и Здраве с Анелия</h1>
         <p>Трансформирай тялото си с професионални тренировки</p>
-        <div style="margin-top:25px;">
-            <button id="authBtn" onclick="openAuthModal()" style="background:white; color:var(--primary); border:none; padding:12px 30px; border-radius:25px; font-weight:bold; cursor:pointer; font-size:1rem;">Вход / Регистрация</button>
-            <span id="userInfo" style="display:none; color:white; margin-left:15px;">
-                👤 <span id="userName"></span>
-                <button onclick="openProfileModal()" style="background:white; color:var(--primary); border:none; padding:5px 15px; border-radius:15px; cursor:pointer; margin-left:10px; font-size:0.85rem; font-weight:bold;">Моят Профил</button>
-                <button onclick="logout()" style="background:transparent; color:white; border:1px solid white; padding:5px 15px; border-radius:15px; cursor:pointer; margin-left:8px; font-size:0.85rem;">Изход</button>
-            </span>
-        </div>
     </div>
 
     <!-- Classes -->
@@ -645,8 +641,8 @@
         function updateAuthUI(user) {
             if (user) {
                 currentUser = user;
-                document.getElementById('authBtn').style.display = 'none';
-                document.getElementById('userInfo').style.display = 'inline';
+                const navProfile = document.querySelector('#bottomNav button[data-nav="profile"]');
+                if (navProfile) navProfile.querySelector('.ni').textContent = '👤';
                 document.getElementById('userName').textContent = user.user_metadata?.name || user.email;
                 if (user.user_metadata?.name) document.getElementById('bookingName').value = user.user_metadata.name;
                 if (user.user_metadata?.phone) {
@@ -666,8 +662,6 @@
                 }
             } else {
                 currentUser = null;
-                document.getElementById('authBtn').style.display = 'inline-block';
-                document.getElementById('userInfo').style.display = 'none';
                 document.getElementById('bookingName').value = '';
                 document.getElementById('bookingPhone').value = '';
                 document.getElementById('isChild').checked = false;
