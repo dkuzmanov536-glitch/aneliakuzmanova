@@ -1568,11 +1568,12 @@
         }
 
         async function loadMyBookings() {
-            const phone = document.getElementById('unsubPhone').value.trim();
+            const phoneEl = document.getElementById('profileUnsubPhone') || document.getElementById('unsubPhone');
+            const phone = phoneEl?.value.trim();
             if (!phone) { alert('Въведи телефон!'); return; }
 
             const { data } = await sb.from('bookings').select('*').eq('phone', phone).order('created_at', { ascending: false });
-            const list = document.getElementById('myBookingsList');
+            const list = document.getElementById('profileMyBookingsList') || document.getElementById('myBookingsList');
 
             if (!data || data.length === 0) {
                 list.innerHTML = '<p style="text-align:center; color:#999;">Няма намерени записвания за този номер.</p>';
@@ -2237,10 +2238,10 @@
                 <h3 style="margin-bottom:10px; color:var(--dark);">Отпиши се от тренировка</h3>
                 <p style="color:#666; font-size:0.9rem; margin-bottom:15px;">Въведи телефона си, за да видиш записванията си</p>
                 <div style="display:flex; gap:10px; margin-bottom:15px;">
-                    <input type="tel" id="unsubPhone" placeholder="Телефон" style="flex:1; padding:12px; border:1px solid #ddd; border-radius:8px; font-family:Arial,sans-serif;">
+                    <input type="tel" id="profileUnsubPhone" placeholder="Телефон" style="flex:1; padding:12px; border:1px solid #ddd; border-radius:8px; font-family:Arial,sans-serif;">
                     <button class="btn" onclick="loadMyBookings()">Търси</button>
                 </div>
-                <div id="myBookingsList"></div>
+                <div id="profileMyBookingsList"></div>
             </div>
         </div>
     </div>
