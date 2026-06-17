@@ -1651,9 +1651,10 @@
 
         // Bottom nav page switching
         function showPage(page) {
-            // Close full-screen overlays
-            document.getElementById('profilePage').style.display = 'none';
-            document.getElementById('authModal').style.display = 'none';
+            const profilePage = document.getElementById('profilePage');
+            const authModal = document.getElementById('authModal');
+            if (profilePage) profilePage.style.display = 'none';
+            if (authModal) authModal.style.display = 'none';
 
             if (page === 'profile') {
                 openProfileModal();
