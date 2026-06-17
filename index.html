@@ -335,6 +335,7 @@
                     <button class="tab-btn" onclick="switchTab('videosTab')">Видеа</button>
                     <button class="tab-btn" onclick="switchTab('cardsTab'); loadCardsAdmin()">Карти</button>
                     <button class="tab-btn" onclick="switchTab('statsTab'); loadStats()">Статистика</button>
+                    <button class="tab-btn" onclick="switchTab('locationTab'); loadLocationAdmin()">Местоположение</button>
                 </div>
 
                 <!-- Bookings Tab -->
@@ -426,6 +427,19 @@
                             <div style="font-size:0.85rem; margin-top:5px;">Отзива</div>
                         </div>
                     </div>
+                </div>
+
+                <!-- Location Tab -->
+                <div id="locationTab" class="tab-content">
+                    <h3 style="margin-bottom:20px;">Местоположение</h3>
+                    <label style="display:block;margin-bottom:6px;font-weight:bold;">Адрес (текст):</label>
+                    <input type="text" id="locAddress" placeholder="Елена, България" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;margin-bottom:15px;font-family:Arial,sans-serif;">
+                    <label style="display:block;margin-bottom:6px;font-weight:bold;">Google Maps embed URL (src на iframe):</label>
+                    <input type="text" id="locMapUrl" placeholder="https://maps.google.com/maps?q=...&output=embed" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;margin-bottom:15px;font-family:Arial,sans-serif;">
+                    <label style="display:block;margin-bottom:6px;font-weight:bold;">Google Maps линк (за бутона):</label>
+                    <input type="text" id="locMapLink" placeholder="https://maps.app.goo.gl/..." style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;margin-bottom:20px;font-family:Arial,sans-serif;">
+                    <div id="locMapPreview" style="margin-bottom:20px; border-radius:12px; overflow:hidden;"></div>
+                    <button class="btn" onclick="saveLocation()" style="width:100%;">💾 Запази местоположението</button>
                 </div>
             </div>
         </div>
@@ -1504,6 +1518,33 @@
             addToCalendar(lastBooking.day, lastBooking.time, lastBooking.cls);
         }
 
+        async function loadLocationAdmin() {
+            const { data } = await sb.from('settings').select('*').in('key', ['location_address', 'location_map_url', 'location_map_link']);
+            if (!data) return;
+            data.forEach(s => {
+                if (s.key === 'location_address') document.getElementById('locAddress').value = s.value || '';
+                if (s.key === 'location_map_url') {
+                    document.getElementById('locMapUrl').value = s.value || '';
+                    if (s.value) document.getElementById('locMapPreview').innerHTML = `<iframe src="${s.value}" width="100%" height="250" style="border:0;" loading="lazy"></iframe>`;
+                }
+                if (s.key === 'location_map_link') document.getElementById('locMapLink').value = s.value || '';
+            });
+        }
+
+        async function saveLocation() {
+            const address = document.getElementById('locAddress').value.trim();
+            const mapUrl = document.getElementById('locMapUrl').value.trim();
+            const mapLink = document.getElementById('locMapLink').value.trim();
+            if (!address) { alert('Въведи адрес!'); return; }
+            await sb.from('settings').upsert([
+                { key: 'location_address', value: address },
+                { key: 'location_map_url', value: mapUrl },
+                { key: 'location_map_link', value: mapLink }
+            ]);
+            if (mapUrl) document.getElementById('locMapPreview').innerHTML = `<iframe src="${mapUrl}" width="100%" height="250" style="border:0; border-radius:10px;" loading="lazy"></iframe>`;
+            alert('✓ Местоположението е запазено!');
+        }
+
         async function loadStats() {
             const startDate = '2026-06-08';
 
@@ -1982,8 +2023,8 @@
         </div>
     </div>
 
-    <!-- Unsubscribe Section -->
-    <section style="padding:40px 20px; background:#fff8f0;" data-page="home">
+    <!-- Unsubscribe Section (moved to profile) -->
+    <section style="padding:40px 20px; background:#fff8f0;" data-page="hidden">
         <div class="container" style="max-width:600px;">
             <h2 style="text-align:center; margin-bottom:10px;">Отпиши се от тренировка</h2>
             <p style="text-align:center; color:#666; margin-bottom:25px;">Въведи телефона си, за да видиш записванията си</p>
@@ -2083,8 +2124,8 @@
         </div>
     </section>
 
-    <!-- Location Section -->
-    <section style="padding:60px 20px; background:#f5f5f5;" data-page="home">
+    <!-- Location Section (moved to admin) -->
+    <section style="padding:60px 20px; background:#f5f5f5;" data-page="hidden">
         <div class="container">
             <h2 style="text-align:center; margin-bottom:10px;">Къде се намираме</h2>
             <p style="text-align:center; color:#666; margin-bottom:30px;">Елена, България</p>
@@ -2185,6 +2226,17 @@
                     <button onclick="saveMonthlyGoal()" class="btn" style="padding:8px 18px;font-size:0.9rem;">Запази</button>
                 </div>
                 <div id="goalProgress"></div>
+            </div>
+
+            <!-- Отпиши се -->
+            <div style="background:white;padding:20px;border-radius:12px;margin-top:20px;box-shadow:0 2px 10px rgba(0,0,0,0.06);">
+                <h3 style="margin-bottom:10px; color:var(--dark);">Отпиши се от тренировка</h3>
+                <p style="color:#666; font-size:0.9rem; margin-bottom:15px;">Въведи телефона си, за да видиш записванията си</p>
+                <div style="display:flex; gap:10px; margin-bottom:15px;">
+                    <input type="tel" id="unsubPhone" placeholder="Телефон" style="flex:1; padding:12px; border:1px solid #ddd; border-radius:8px; font-family:Arial,sans-serif;">
+                    <button class="btn" onclick="loadMyBookings()">Търси</button>
+                </div>
+                <div id="myBookingsList"></div>
             </div>
         </div>
     </div>
