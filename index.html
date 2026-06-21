@@ -342,11 +342,12 @@
                 <div id="bookings" class="tab-content active">
                     <div style="display:flex; gap:8px; margin-bottom:14px;">
                         <button id="btnActive" onclick="setBookingsView('active')" style="flex:1; padding:9px; border:none; border-radius:8px; cursor:pointer; font-weight:bold; background:var(--primary); color:white;">Активни</button>
-                        <button id="btnExpired" onclick="setBookingsView('expired')" style="flex:1; padding:9px; border:none; border-radius:8px; cursor:pointer; font-weight:bold; background:#eee; color:#555;">Изтити</button>
+                        <button id="btnExpired" onclick="setBookingsView('expired')" style="flex:1; padding:9px; border:none; border-radius:8px; cursor:pointer; font-weight:bold; background:#eee; color:#555;">Изтрити</button>
                     </div>
-                    <div style="display:flex; gap:10px; margin-bottom:12px; align-items:center;">
+                    <div style="display:flex; gap:10px; margin-bottom:12px; align-items:center; flex-wrap:wrap;">
                         <input type="text" id="deleteByDate" placeholder="дд.мм.гггг" style="width:130px; padding:9px 12px; border:1px solid #ddd; border-radius:5px; font-family:Arial,sans-serif; font-size:14px;">
                         <button onclick="deleteBookingsByDate()" style="background:#e74c3c; color:white; border:none; padding:9px 16px; border-radius:5px; cursor:pointer; font-weight:bold; white-space:nowrap;">Изтрий за дата</button>
+                        <button id="btnRestoreAll" onclick="restoreAllBookings()" style="display:none; background:#27ae60; color:white; border:none; padding:9px 16px; border-radius:5px; cursor:pointer; font-weight:bold; white-space:nowrap;">↩ Върни всички</button>
                     </div>
                     <div style="margin-bottom:10px;">
                         <input id="searchBookings" oninput="loadAdminBookings()" type="text" placeholder="Търси по име или телефон..." style="width:100%;padding:9px 12px;border:1px solid #ddd;border-radius:5px;font-family:Arial,sans-serif;font-size:14px;">
@@ -1193,7 +1194,7 @@
             });
             allBookings = bookings;
             const countEl = document.getElementById('bookingsCount');
-            if (countEl) countEl.textContent = allBookings.length + (bookingsView === 'expired' ? ' изтити' : ' записани');
+            if (countEl) countEl.textContent = allBookings.length + (bookingsView === 'expired' ? ' изтрити' : ' записани');
             const list = document.getElementById('bookingsList');
             if (allBookings.length === 0) {
                 list.innerHTML = '<div class="empty">Няма записания</div>';
@@ -1222,6 +1223,8 @@
             document.getElementById('btnActive').style.color = view === 'active' ? 'white' : '#555';
             document.getElementById('btnExpired').style.background = view === 'expired' ? '#888' : '#eee';
             document.getElementById('btnExpired').style.color = view === 'expired' ? 'white' : '#555';
+            const btnRA = document.getElementById('btnRestoreAll');
+            if (btnRA) btnRA.style.display = view === 'expired' ? '' : 'none';
             loadAdminBookings();
         }
 
@@ -1268,6 +1271,14 @@
         async function restoreBooking(id) {
             await sb.from('bookings').update({ is_deleted: false }).eq('id', id);
             await loadAdminBookings();
+        }
+
+        async function restoreAllBookings() {
+            if (!confirm('Връщане на всички изтрити записвания?\n\nСигурен ли си?')) return;
+            const { error } = await sb.from('bookings').update({ is_deleted: false }).eq('is_deleted', true);
+            if (error) { alert('Грешка!'); return; }
+            await loadAdminBookings();
+            alert('✓ Всички записвания са върнати');
         }
 
         function loadScheduleEdit() {
