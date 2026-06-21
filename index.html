@@ -344,6 +344,10 @@
                         <button id="btnActive" onclick="setBookingsView('active')" style="flex:1; padding:9px; border:none; border-radius:8px; cursor:pointer; font-weight:bold; background:var(--primary); color:white;">Активни</button>
                         <button id="btnExpired" onclick="setBookingsView('expired')" style="flex:1; padding:9px; border:none; border-radius:8px; cursor:pointer; font-weight:bold; background:#eee; color:#555;">Изтити</button>
                     </div>
+                    <div style="display:flex; gap:10px; margin-bottom:12px; align-items:center;">
+                        <input type="text" id="deleteByDate" placeholder="дд.мм.гггг" style="width:130px; padding:9px 12px; border:1px solid #ddd; border-radius:5px; font-family:Arial,sans-serif; font-size:14px;">
+                        <button onclick="deleteBookingsByDate()" style="background:#e74c3c; color:white; border:none; padding:9px 16px; border-radius:5px; cursor:pointer; font-weight:bold; white-space:nowrap;">Изтрий за дата</button>
+                    </div>
                     <div style="margin-bottom:10px;">
                         <input id="searchBookings" oninput="loadAdminBookings()" type="text" placeholder="Търси по име или телефон..." style="width:100%;padding:9px 12px;border:1px solid #ddd;border-radius:5px;font-family:Arial,sans-serif;font-size:14px;">
                     </div>
@@ -1239,8 +1243,19 @@
         }
 
         async function loadBookingsList() {
-            await cleanupOldBookings();
             await loadAdminBookings();
+        }
+
+        async function deleteBookingsByDate() {
+            const dateVal = document.getElementById('deleteByDate').value.trim();
+            if (!dateVal) { alert('Въведи дата!'); return; }
+            if (!parseBgDate(dateVal)) { alert('Невалидна дата! Използвай формат дд.мм.гггг'); return; }
+            if (!confirm(`Изтриване на всички записвания за ${dateVal}?\n\nСигурен ли си?`)) return;
+            const { error } = await sb.from('bookings').update({ is_deleted: true }).eq('date', dateVal).eq('is_deleted', false);
+            if (error) { alert('Грешка при изтриване!'); return; }
+            document.getElementById('deleteByDate').value = '';
+            await loadAdminBookings();
+            alert(`✓ Записванията за ${dateVal} са изтрити`);
         }
 
         async function deleteBooking(id, name, day, time) {
