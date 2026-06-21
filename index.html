@@ -1173,7 +1173,9 @@
             const search = (document.getElementById('searchBookings')?.value || '').toLowerCase().trim();
             const sortDir = document.getElementById('sortBookings')?.value || 'asc';
 
-            let query = sb.from('bookings').select('*').eq('is_deleted', bookingsView === 'expired');
+            let query = bookingsView === 'expired'
+                ? sb.from('bookings').select('*').eq('is_deleted', true)
+                : sb.from('bookings').select('*').or('is_deleted.eq.false,is_deleted.is.null');
             if (filterDay) query = query.eq('day', filterDay);
             if (filterClass) query = query.eq('class', filterClass);
 
@@ -1254,7 +1256,7 @@
             if (!dateVal) { alert('Въведи дата!'); return; }
             if (!parseBgDate(dateVal)) { alert('Невалидна дата! Използвай формат дд.мм.гггг'); return; }
             if (!confirm(`Изтриване на всички записвания за ${dateVal}?\n\nСигурен ли си?`)) return;
-            const { error } = await sb.from('bookings').update({ is_deleted: true }).eq('date', dateVal).eq('is_deleted', false);
+            const { error } = await sb.from('bookings').update({ is_deleted: true }).eq('date', dateVal).or('is_deleted.eq.false,is_deleted.is.null');
             if (error) { alert('Грешка при изтриване!'); return; }
             document.getElementById('deleteByDate').value = '';
             await loadAdminBookings();
@@ -1275,7 +1277,7 @@
 
         async function restoreAllBookings() {
             if (!confirm('Връщане на всички изтрити записвания?\n\nСигурен ли си?')) return;
-            const { error } = await sb.from('bookings').update({ is_deleted: false }).eq('is_deleted', true);
+            const { error } = await sb.from('bookings').update({ is_deleted: false }).or('is_deleted.eq.true,is_deleted.is.null');
             if (error) { alert('Грешка!'); return; }
             await loadAdminBookings();
             alert('✓ Всички записвания са върнати');
