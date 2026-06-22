@@ -372,6 +372,7 @@
                             <option value="desc">По-късна дата първо</option>
                         </select>
                         <span id="bookingsCount" style="padding:6px 12px; background:var(--primary); color:#fff; border-radius:20px; font-size:14px; font-weight:bold;"></span>
+                        <button onclick="exportBookingsCSV()" style="background:#27ae60; color:white; border:none; padding:7px 14px; border-radius:20px; cursor:pointer; font-weight:bold; font-size:13px; white-space:nowrap;">📥 CSV</button>
                     </div>
                     <div class="bookings-list" id="bookingsList"></div>
                 </div>
@@ -390,8 +391,11 @@
                 <!-- Videos Tab -->
                 <div id="videosTab" class="tab-content">
                     <h3 style="margin-bottom:20px;">Управление на Видеа</h3>
-                    <input type="file" id="videoUpload" accept="video/*" style="margin-bottom:15px; width:100%;">
-                    <button class="btn" onclick="uploadVideo()" style="width:100%; margin-bottom:20px;">Качи Видео</button>
+                    <div style="background:#f9f9f9; padding:15px; border-radius:10px; margin-bottom:20px; display:flex; flex-direction:column; gap:10px;">
+                        <input type="text" id="videoTitle" placeholder="Заглавие на видеото" style="padding:9px 12px; border:1px solid #ddd; border-radius:5px; font-family:Arial,sans-serif; font-size:14px;">
+                        <input type="text" id="videoUrl" placeholder="YouTube линк (напр. https://youtu.be/...)" style="padding:9px 12px; border:1px solid #ddd; border-radius:5px; font-family:Arial,sans-serif; font-size:14px;">
+                        <button class="btn" onclick="addVideo()" style="width:100%;">+ Добави Видео</button>
+                    </div>
                     <div id="adminVideosList"></div>
                 </div>
 
@@ -1283,6 +1287,25 @@
             alert('✓ Всички записвания са върнати');
         }
 
+        function exportBookingsCSV() {
+            if (!allBookings || allBookings.length === 0) { alert('Няма записвания за изтегляне!'); return; }
+            const headers = ['Име', 'Телефон', 'Ден', 'Дата', 'Час', 'Тренировка', 'Цена', 'Плащане', 'Дете', 'Добавено'];
+            const rows = allBookings.map(b => [
+                b.name || '', b.phone || '', b.day || '', b.date || '', b.time || '',
+                b.class || '', b.price || '', b.payment || '',
+                b.is_child ? 'Да' : 'Не',
+                b.created_at ? new Date(b.created_at).toLocaleString('bg-BG') : ''
+            ].map(v => `"${String(v).replace(/"/g, '""')}"`).join(','));
+            const csv = '﻿' + [headers.join(','), ...rows].join('\n');
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `записвания_${new Date().toLocaleDateString('bg-BG').replace(/\./g, '-')}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
         function loadScheduleEdit() {
             const capacity = getCapacity();
             const list = document.getElementById('scheduleEditList');
@@ -1481,51 +1504,64 @@
             `).join('');
         }
 
+        function getYouTubeEmbedUrl(url) {
+            if (!url) return null;
+            const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|v\/|shorts\/))([a-zA-Z0-9_-]{11})/);
+            if (match) return `https://www.youtube.com/embed/${match[1]}`;
+            if (url.includes('youtube.com/embed/')) return url;
+            return null;
+        }
+
         async function loadVideos() {
-            const { data, error } = await sb.storage.from('videos').list();
+            const { data } = await sb.from('videos').select('*').order('created_at', { ascending: false });
             const grid = document.getElementById('videosGrid');
             const adminList = document.getElementById('adminVideosList');
 
             if (!data || data.length === 0) {
-                grid.innerHTML = '<p style="text-align:center; color:#999; grid-column:1/-1;">Все още няма добавени видеа.</p>';
-                if (adminList) adminList.innerHTML = '<p style="color:#999;">Няма качени видеа.</p>';
+                if (grid) grid.innerHTML = '<p style="text-align:center; color:#999; grid-column:1/-1;">Все още няма добавени видеа.</p>';
+                if (adminList) adminList.innerHTML = '<p style="color:#999;">Няма добавени видеа.</p>';
                 return;
             }
 
-            grid.innerHTML = data.map(file => {
-                const url = `https://icxlgvervwohjuspswly.supabase.co/storage/v1/object/public/videos/${file.name}`;
-                return `
-                    <div style="background:#2d2d30; border-radius:15px; overflow:hidden; box-shadow:0 10px 30px rgba(0,0,0,0.3);">
-                        <video src="${url}" controls style="width:100%; max-height:220px; display:block;"></video>
-                        <p style="padding:12px 15px; font-size:0.85rem; color:#aaa;">${file.name.replace(/^\d+_/, '')}</p>
-                    </div>`;
-            }).join('');
+            if (grid) {
+                grid.innerHTML = data.map(v => {
+                    const embedUrl = getYouTubeEmbedUrl(v.url);
+                    return `
+                        <div style="background:#2d2d30; border-radius:15px; overflow:hidden; box-shadow:0 10px 30px rgba(0,0,0,0.3);">
+                            ${embedUrl
+                                ? `<iframe src="${embedUrl}" width="100%" height="220" style="display:block; border:0;" allow="autoplay; encrypted-media" allowfullscreen></iframe>`
+                                : `<video src="${v.url}" controls style="width:100%; max-height:220px; display:block;"></video>`}
+                            <p style="padding:12px 15px; font-size:0.85rem; color:#aaa;">${v.title || ''}</p>
+                        </div>`;
+                }).join('');
+            }
 
             if (adminList) {
-                adminList.innerHTML = data.map(file => `
-                    <div style="display:flex; justify-content:space-between; align-items:center; padding:10px; background:#f5f5f5; border-radius:8px; margin:8px 0;">
-                        <span>${file.name}</span>
-                        <button class="delete-btn" onclick="deleteVideo('${file.name}')">Изтрий</button>
+                adminList.innerHTML = data.map(v => `
+                    <div style="display:flex; justify-content:space-between; align-items:center; padding:10px; background:#f5f5f5; border-radius:8px; margin:8px 0; gap:10px;">
+                        <div style="overflow:hidden;">
+                            <strong style="display:block;">${v.title || 'Без заглавие'}</strong>
+                            <small style="color:#999; word-break:break-all;">${v.url}</small>
+                        </div>
+                        <button class="delete-btn" onclick="deleteVideo(${v.id})" style="flex-shrink:0;">Изтрий</button>
                     </div>`).join('');
             }
         }
 
-        async function uploadVideo() {
-            const file = document.getElementById('videoUpload').files[0];
-            if (!file) { alert('Избери видео файл!'); return; }
-
-            const fileName = Date.now() + '_' + file.name;
-            const { error } = await sb.storage.from('videos').upload(fileName, file);
-
-            if (error) { alert('Грешка при качване!'); return; }
-            alert('Видеото е качено успешно!');
-            document.getElementById('videoUpload').value = '';
+        async function addVideo() {
+            const title = document.getElementById('videoTitle').value.trim();
+            const url = document.getElementById('videoUrl').value.trim();
+            if (!url) { alert('Въведи YouTube линк!'); return; }
+            const { error } = await sb.from('videos').insert({ title, url });
+            if (error) { alert('Грешка: ' + error.message); return; }
+            document.getElementById('videoTitle').value = '';
+            document.getElementById('videoUrl').value = '';
             loadVideos();
         }
 
-        async function deleteVideo(fileName) {
+        async function deleteVideo(id) {
             if (confirm('Изтрий това видео?')) {
-                await sb.storage.from('videos').remove([fileName]);
+                await sb.from('videos').delete().eq('id', id);
                 loadVideos();
             }
         }
