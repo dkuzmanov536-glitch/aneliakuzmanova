@@ -392,9 +392,9 @@
                 <div id="videosTab" class="tab-content">
                     <h3 style="margin-bottom:20px;">Управление на Видеа</h3>
                     <div style="background:#f9f9f9; padding:15px; border-radius:10px; margin-bottom:20px; display:flex; flex-direction:column; gap:10px;">
-                        <input type="text" id="videoTitle" placeholder="Заглавие на видеото" style="padding:9px 12px; border:1px solid #ddd; border-radius:5px; font-family:Arial,sans-serif; font-size:14px;">
-                        <input type="text" id="videoUrl" placeholder="YouTube линк (напр. https://youtu.be/...)" style="padding:9px 12px; border:1px solid #ddd; border-radius:5px; font-family:Arial,sans-serif; font-size:14px;">
-                        <button class="btn" onclick="addVideo()" style="width:100%;">+ Добави Видео</button>
+                        <input type="file" id="videoUpload" accept="video/*" style="padding:6px; font-family:Arial,sans-serif; font-size:14px;">
+                        <div id="uploadProgress" style="display:none; font-size:13px; color:#555;">Качва се...</div>
+                        <button class="btn" onclick="uploadVideo()" style="width:100%;">⬆ Качи Видео</button>
                     </div>
                     <div id="adminVideosList"></div>
                 </div>
@@ -1504,64 +1504,56 @@
             `).join('');
         }
 
-        function getYouTubeEmbedUrl(url) {
-            if (!url) return null;
-            const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|v\/|shorts\/))([a-zA-Z0-9_-]{11})/);
-            if (match) return `https://www.youtube.com/embed/${match[1]}`;
-            if (url.includes('youtube.com/embed/')) return url;
-            return null;
-        }
-
         async function loadVideos() {
-            const { data } = await sb.from('videos').select('*').order('created_at', { ascending: false });
+            const { data } = await sb.storage.from('videos').list('', { sortBy: { column: 'created_at', order: 'desc' } });
             const grid = document.getElementById('videosGrid');
             const adminList = document.getElementById('adminVideosList');
+            const SUPABASE_URL = 'https://icxlgvervwohjuspswly.supabase.co';
 
             if (!data || data.length === 0) {
                 if (grid) grid.innerHTML = '<p style="text-align:center; color:#999; grid-column:1/-1;">Все още няма добавени видеа.</p>';
-                if (adminList) adminList.innerHTML = '<p style="color:#999;">Няма добавени видеа.</p>';
+                if (adminList) adminList.innerHTML = '<p style="color:#999;">Няма качени видеа.</p>';
                 return;
             }
 
             if (grid) {
-                grid.innerHTML = data.map(v => {
-                    const embedUrl = getYouTubeEmbedUrl(v.url);
+                grid.innerHTML = data.map(file => {
+                    const url = `${SUPABASE_URL}/storage/v1/object/public/videos/${file.name}`;
                     return `
                         <div style="background:#2d2d30; border-radius:15px; overflow:hidden; box-shadow:0 10px 30px rgba(0,0,0,0.3);">
-                            ${embedUrl
-                                ? `<iframe src="${embedUrl}" width="100%" height="220" style="display:block; border:0;" allow="autoplay; encrypted-media" allowfullscreen></iframe>`
-                                : `<video src="${v.url}" controls style="width:100%; max-height:220px; display:block;"></video>`}
-                            <p style="padding:12px 15px; font-size:0.85rem; color:#aaa;">${v.title || ''}</p>
+                            <video src="${url}" controls style="width:100%; max-height:220px; display:block;"></video>
+                            <p style="padding:12px 15px; font-size:0.85rem; color:#aaa;">${file.name.replace(/^\d+_/, '')}</p>
                         </div>`;
                 }).join('');
             }
 
             if (adminList) {
-                adminList.innerHTML = data.map(v => `
-                    <div style="display:flex; justify-content:space-between; align-items:center; padding:10px; background:#f5f5f5; border-radius:8px; margin:8px 0; gap:10px;">
-                        <div style="overflow:hidden;">
-                            <strong style="display:block;">${v.title || 'Без заглавие'}</strong>
-                            <small style="color:#999; word-break:break-all;">${v.url}</small>
-                        </div>
-                        <button class="delete-btn" onclick="deleteVideo(${v.id})" style="flex-shrink:0;">Изтрий</button>
+                adminList.innerHTML = data.map(file => `
+                    <div style="display:flex; justify-content:space-between; align-items:center; padding:10px; background:#f5f5f5; border-radius:8px; margin:8px 0;">
+                        <span style="word-break:break-all;">${file.name.replace(/^\d+_/, '')}</span>
+                        <button class="delete-btn" onclick="deleteVideo('${file.name}')" style="flex-shrink:0;">Изтрий</button>
                     </div>`).join('');
             }
         }
 
-        async function addVideo() {
-            const title = document.getElementById('videoTitle').value.trim();
-            const url = document.getElementById('videoUrl').value.trim();
-            if (!url) { alert('Въведи YouTube линк!'); return; }
-            const { error } = await sb.from('videos').insert({ title, url });
+        async function uploadVideo() {
+            const file = document.getElementById('videoUpload').files[0];
+            if (!file) { alert('Избери видео файл!'); return; }
+            const progressEl = document.getElementById('uploadProgress');
+            progressEl.style.display = 'block';
+            progressEl.textContent = 'Качва се... изчакай';
+            const fileName = Date.now() + '_' + file.name;
+            const { error } = await sb.storage.from('videos').upload(fileName, file, { cacheControl: '3600', upsert: false });
+            progressEl.style.display = 'none';
             if (error) { alert('Грешка: ' + error.message); return; }
-            document.getElementById('videoTitle').value = '';
-            document.getElementById('videoUrl').value = '';
+            alert('Видеото е качено успешно!');
+            document.getElementById('videoUpload').value = '';
             loadVideos();
         }
 
-        async function deleteVideo(id) {
+        async function deleteVideo(fileName) {
             if (confirm('Изтрий това видео?')) {
-                await sb.from('videos').delete().eq('id', id);
+                await sb.storage.from('videos').remove([fileName]);
                 loadVideos();
             }
         }
