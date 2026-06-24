@@ -421,6 +421,7 @@
                 <!-- Stats Tab -->
                 <div id="statsTab" class="tab-content">
                     <h3 style="margin-bottom:20px;">Статистика</h3>
+                    <button onclick="downloadFullBackup()" style="width:100%; margin-bottom:20px; background:#2c3e50; color:white; border:none; padding:12px; border-radius:8px; cursor:pointer; font-size:15px; font-weight:bold;">💾 Свали Backup (JSON)</button>
                     <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(140px,1fr)); gap:15px;">
                         <div style="background:linear-gradient(135deg,var(--primary),var(--secondary)); padding:20px; border-radius:12px; text-align:center; color:white;">
                             <div id="statBookings" style="font-size:2rem; font-weight:bold;">-</div>
@@ -1285,6 +1286,40 @@
             if (error) { alert('Грешка!'); return; }
             await loadAdminBookings();
             alert('✓ Всички записвания са върнати');
+        }
+
+        async function downloadFullBackup() {
+            const btn = event.target;
+            btn.textContent = '⏳ Зарежда...';
+            btn.disabled = true;
+            try {
+                const [bookings, schedule, cards, settings, reviews] = await Promise.all([
+                    sb.from('bookings').select('*').limit(10000),
+                    sb.from('schedule').select('*').limit(1000),
+                    sb.from('cards').select('*').limit(10000),
+                    sb.from('settings').select('*').limit(1000),
+                    sb.from('reviews').select('*').limit(10000),
+                ]);
+                const backup = {
+                    date: new Date().toLocaleString('bg-BG'),
+                    bookings: bookings.data || [],
+                    schedule: schedule.data || [],
+                    cards: cards.data || [],
+                    settings: settings.data || [],
+                    reviews: reviews.data || [],
+                };
+                const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `backup_${new Date().toLocaleDateString('bg-BG').replace(/\./g,'-')}.json`;
+                a.click();
+                URL.revokeObjectURL(url);
+            } catch(e) {
+                alert('Грешка при backup: ' + e.message);
+            }
+            btn.textContent = '💾 Свали Backup (JSON)';
+            btn.disabled = false;
         }
 
         function exportBookingsCSV() {

@@ -1,0 +1,63 @@
+name: Daily Supabase Backup
+
+on:
+  schedule:
+    - cron: '0 1 * * *'  # всяка нощ в 01:00 UTC
+  workflow_dispatch:       # позволява ръчно стартиране
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Backup Supabase tables
+        env:
+          SUPABASE_URL: https://icxlgvervwohjuspswly.supabase.co
+          SUPABASE_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImljeGxndmVydndvaGp1c3Bzd2x5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA1MDA4MDAsImV4cCI6MjA5NjA3NjgwMH0.bz-4z4llSLzkc1U6s8I_esLSkQrpMNntwMUIcNH_J_U
+        run: |
+          DATE=$(date +%Y-%m-%d)
+          mkdir -p backups
+
+          fetch_table() {
+            curl -s \
+              -H "apikey: $SUPABASE_KEY" \
+              -H "Authorization: Bearer $SUPABASE_KEY" \
+              "$SUPABASE_URL/rest/v1/$1?select=*&limit=10000"
+          }
+
+          echo "{" > backups/backup_${DATE}.json
+          echo "\"date\": \"${DATE}\"," >> backups/backup_${DATE}.json
+
+          echo "\"bookings\":" >> backups/backup_${DATE}.json
+          fetch_table "bookings" >> backups/backup_${DATE}.json
+          echo "," >> backups/backup_${DATE}.json
+
+          echo "\"schedule\":" >> backups/backup_${DATE}.json
+          fetch_table "schedule" >> backups/backup_${DATE}.json
+          echo "," >> backups/backup_${DATE}.json
+
+          echo "\"cards\":" >> backups/backup_${DATE}.json
+          fetch_table "cards" >> backups/backup_${DATE}.json
+          echo "," >> backups/backup_${DATE}.json
+
+          echo "\"settings\":" >> backups/backup_${DATE}.json
+          fetch_table "settings" >> backups/backup_${DATE}.json
+          echo "," >> backups/backup_${DATE}.json
+
+          echo "\"reviews\":" >> backups/backup_${DATE}.json
+          fetch_table "reviews" >> backups/backup_${DATE}.json
+
+          echo "}" >> backups/backup_${DATE}.json
+
+          # Запази само последните 30 дни
+          ls -t backups/backup_*.json 2>/dev/null | tail -n +31 | xargs rm -f || true
+
+      - name: Commit backup
+        run: |
+          git config user.name "Backup Bot"
+          git config user.email "backup@noreply.com"
+          git add backups/
+          git diff --staged --quiet || git commit -m "Backup $(date +%Y-%m-%d)"
+          git push
