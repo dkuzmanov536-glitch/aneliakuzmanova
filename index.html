@@ -366,6 +366,7 @@
                             <option value="">Всички тренировки</option>
                             <option>Аеробика и Табата</option>
                             <option>РГ и Мобилност</option>
+                            <option>Нискаинтензивна Аеробика</option>
                         </select>
                         <select id="sortBookings" onchange="loadAdminBookings()" style="padding:8px; border:1px solid #ddd; border-radius:5px; font-family:Arial,sans-serif;">
                             <option value="asc">По-ранна дата първо</option>
@@ -917,6 +918,7 @@
                     <small>Заявена на: ${new Date(card.created_at).toLocaleDateString('bg-BG')}</small>
                     <div style="display:flex; gap:10px; margin-top:8px;">
                         <button class="btn" style="background:#27ae60; padding:8px 15px;" onclick="toggleCard(${card.id}, true)">✓ Активирай</button>
+                        <button class="btn" style="background:#3498db; padding:8px 15px;" onclick="editCard(${card.id})">✏️ Редактирай</button>
                         <button class="delete-btn" onclick="deleteCard(${card.id})">Изтрий</button>
                     </div>
                 </div>`).join('');
@@ -933,8 +935,9 @@
                         <small>📞 ${card.phone}</small>
                         <small>Карта: ${card.card_type} | Остават: ${remaining} тренировки</small>
                         <small>Валидна до: ${card.expires_at} ${expired ? '❌ ИЗТЕКЛА' : ''}</small>
-                        <div style="display:flex; gap:10px; margin-top:8px;">
+                        <div style="display:flex; gap:10px; margin-top:8px; flex-wrap:wrap;">
                             <button class="btn" style="background:#e67e22; padding:6px 12px; font-size:0.85rem;" onclick="toggleCard(${card.id}, false)">Деактивирай</button>
+                            <button class="btn" style="background:#3498db; padding:6px 12px; font-size:0.85rem;" onclick="editCard(${card.id})">✏️ Редактирай</button>
                             <button class="delete-btn" onclick="deleteCard(${card.id})">Изтрий</button>
                         </div>
                     </div>`;
@@ -942,6 +945,60 @@
             }
 
             list.innerHTML = html || '<div class="empty">Няма карти</div>';
+        }
+
+        async function editCard(id) {
+            const { data: cards } = await sb.from('cards').select('*').eq('id', id);
+            const c = cards?.[0];
+            if (!c) return;
+            const el = document.getElementById('editCardForm');
+            if (el) el.remove();
+            const form = document.createElement('div');
+            form.id = 'editCardForm';
+            form.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:5000;display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;';
+            form.innerHTML = `
+                <div style="background:white;border-radius:15px;padding:25px;width:100%;max-width:420px;max-height:90vh;overflow-y:auto;">
+                    <h3 style="margin:0 0 18px;">✏️ Редактирай карта</h3>
+                    <div style="display:flex;flex-direction:column;gap:10px;">
+                        <input id="ec_name" value="${c.name || ''}" placeholder="Име" style="padding:9px 12px;border:1px solid #ddd;border-radius:5px;font-family:Arial,sans-serif;">
+                        <input id="ec_phone" value="${c.phone || ''}" placeholder="Телефон" style="padding:9px 12px;border:1px solid #ddd;border-radius:5px;font-family:Arial,sans-serif;">
+                        <input id="ec_card_type" value="${c.card_type || ''}" placeholder="Тип карта" style="padding:9px 12px;border:1px solid #ddd;border-radius:5px;font-family:Arial,sans-serif;">
+                        <div style="display:flex;gap:10px;">
+                            <div style="flex:1;">
+                                <label style="font-size:12px;color:#666;">Общо тренировки</label>
+                                <input id="ec_total" type="number" value="${c.trainings_total || 0}" style="width:100%;padding:9px 12px;border:1px solid #ddd;border-radius:5px;font-family:Arial,sans-serif;box-sizing:border-box;">
+                            </div>
+                            <div style="flex:1;">
+                                <label style="font-size:12px;color:#666;">Използвани</label>
+                                <input id="ec_used" type="number" value="${c.trainings_used || 0}" style="width:100%;padding:9px 12px;border:1px solid #ddd;border-radius:5px;font-family:Arial,sans-serif;box-sizing:border-box;">
+                            </div>
+                        </div>
+                        <div>
+                            <label style="font-size:12px;color:#666;">Валидна до</label>
+                            <input id="ec_expires" type="date" value="${c.expires_at || ''}" style="width:100%;padding:9px 12px;border:1px solid #ddd;border-radius:5px;font-family:Arial,sans-serif;box-sizing:border-box;">
+                        </div>
+                    </div>
+                    <div style="display:flex;gap:10px;margin-top:18px;">
+                        <button class="btn" style="flex:1;background:#27ae60;" onclick="saveCard(${c.id})">💾 Запази</button>
+                        <button class="btn" style="flex:1;background:#aaa;" onclick="document.getElementById('editCardForm').remove()">Затвори</button>
+                    </div>
+                </div>`;
+            document.body.appendChild(form);
+        }
+
+        async function saveCard(id) {
+            const updates = {
+                name: document.getElementById('ec_name').value.trim(),
+                phone: document.getElementById('ec_phone').value.trim(),
+                card_type: document.getElementById('ec_card_type').value.trim(),
+                trainings_total: parseInt(document.getElementById('ec_total').value) || 0,
+                trainings_used: parseInt(document.getElementById('ec_used').value) || 0,
+                expires_at: document.getElementById('ec_expires').value,
+            };
+            const { error } = await sb.from('cards').update(updates).eq('id', id);
+            if (error) { alert('Грешка: ' + error.message); return; }
+            document.getElementById('editCardForm').remove();
+            loadCardsAdmin();
         }
 
         async function toggleCard(id, active) {
