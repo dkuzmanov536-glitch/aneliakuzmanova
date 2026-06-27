@@ -330,7 +330,7 @@
             <!-- Admin Dashboard -->
             <div id="adminDash" style="display: none;">
                 <div class="tabs" style="margin-bottom:20px;">
-                    <button class="tab-btn active" onclick="switchTab('bookings')">Записани Хора</button>
+                    <button class="tab-btn active" onclick="switchTab('bookings')">Резервации</button>
                     <button class="tab-btn" onclick="switchTab('editSchedule')">Редактирай График</button>
                     <button class="tab-btn" onclick="switchTab('videosTab')">Видеа</button>
                     <button class="tab-btn" onclick="switchTab('cardsTab'); loadCardsAdmin()">Карти</button>
@@ -344,35 +344,35 @@
                         <button id="btnActive" onclick="setBookingsView('active')" style="flex:1; padding:9px; border:none; border-radius:8px; cursor:pointer; font-weight:bold; background:var(--primary); color:white;">Активни</button>
                         <button id="btnExpired" onclick="setBookingsView('expired')" style="flex:1; padding:9px; border:none; border-radius:8px; cursor:pointer; font-weight:bold; background:#eee; color:#555;">Изтрити</button>
                     </div>
-                    <div style="display:flex; gap:10px; margin-bottom:12px; align-items:center; flex-wrap:wrap;">
-                        <input type="text" id="deleteByDate" placeholder="дд.мм.гггг" style="width:130px; padding:9px 12px; border:1px solid #ddd; border-radius:5px; font-family:Arial,sans-serif; font-size:14px;">
-                        <button onclick="deleteBookingsByDate()" style="background:#e74c3c; color:white; border:none; padding:9px 16px; border-radius:5px; cursor:pointer; font-weight:bold; white-space:nowrap;">Изтрий за дата</button>
-                        <button id="btnRestoreAll" onclick="restoreAllBookings()" style="display:none; background:#27ae60; color:white; border:none; padding:9px 16px; border-radius:5px; cursor:pointer; font-weight:bold; white-space:nowrap;">↩ Върни всички</button>
+                    <!-- Календар / навигация по седмици -->
+                    <div style="background:#f7f7f9; border-radius:12px; padding:12px; margin-bottom:14px;">
+                        <div style="display:flex; gap:8px; align-items:center; justify-content:space-between; margin-bottom:10px;">
+                            <button onclick="changeWeek(-1)" style="background:#fff; border:1px solid #ddd; width:40px; height:40px; border-radius:8px; cursor:pointer; font-size:1.2rem;">‹</button>
+                            <div id="weekLabel" style="text-align:center; font-weight:bold; flex:1; font-size:0.95rem;"></div>
+                            <button onclick="changeWeek(1)" style="background:#fff; border:1px solid #ddd; width:40px; height:40px; border-radius:8px; cursor:pointer; font-size:1.2rem;">›</button>
+                        </div>
+                        <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+                            <button id="btnThisWeek" onclick="selectThisWeek()" style="flex:1; min-width:130px; padding:9px; border:none; border-radius:8px; cursor:pointer; font-weight:bold;">Текуща седмица</button>
+                            <button id="btnLastWeek" onclick="selectLastWeek()" style="flex:1; min-width:130px; padding:9px; border:none; border-radius:8px; cursor:pointer; font-weight:bold;">Минала седмица</button>
+                            <input type="date" id="pickDate" onchange="pickSpecificDate(this.value)" title="Избери конкретна дата" style="padding:8px; border:1px solid #ddd; border-radius:8px; font-family:Arial,sans-serif;">
+                        </div>
+                        <div id="dayClearRow" style="display:none; margin-top:8px;">
+                            <button onclick="clearSpecificDate()" style="background:#fff; border:1px solid #ddd; padding:7px 12px; border-radius:8px; cursor:pointer; font-size:13px;">↩ Покажи цялата седмица</button>
+                        </div>
                     </div>
+
                     <div style="margin-bottom:10px;">
                         <input id="searchBookings" oninput="loadAdminBookings()" type="text" placeholder="Търси по име или телефон..." style="width:100%;padding:9px 12px;border:1px solid #ddd;border-radius:5px;font-family:Arial,sans-serif;font-size:14px;">
                     </div>
                     <div style="display:flex; gap:10px; margin-bottom:15px; flex-wrap:wrap; align-items:center;">
-                        <select id="filterDay" onchange="loadAdminBookings()" style="padding:8px; border:1px solid #ddd; border-radius:5px; font-family:Arial,sans-serif;">
-                            <option value="">Всички дни</option>
-                            <option>Понеделник</option>
-                            <option>Вторник</option>
-                            <option>Сряда</option>
-                            <option>Четвъртък</option>
-                            <option>Петък</option>
-                            <option>Събота</option>
-                        </select>
                         <select id="filterClass" onchange="loadAdminBookings()" style="padding:8px; border:1px solid #ddd; border-radius:5px; font-family:Arial,sans-serif;">
                             <option value="">Всички тренировки</option>
                             <option>Аеробика и Табата</option>
                             <option>РГ и Мобилност</option>
-                            <option>Нискаинтензивна Аеробика</option>
-                        </select>
-                        <select id="sortBookings" onchange="loadAdminBookings()" style="padding:8px; border:1px solid #ddd; border-radius:5px; font-family:Arial,sans-serif;">
-                            <option value="asc">По-ранна дата първо</option>
-                            <option value="desc">По-късна дата първо</option>
+                            <option>Нискоинтензивна Аеробика</option>
                         </select>
                         <span id="bookingsCount" style="padding:6px 12px; background:var(--primary); color:#fff; border-radius:20px; font-size:14px; font-weight:bold;"></span>
+                        <button id="btnRestoreAll" onclick="restoreAllBookings()" style="display:none; background:#27ae60; color:white; border:none; padding:7px 14px; border-radius:20px; cursor:pointer; font-weight:bold; font-size:13px; white-space:nowrap;">↩ Върни всички</button>
                         <button onclick="exportBookingsCSV()" style="background:#27ae60; color:white; border:none; padding:7px 14px; border-radius:20px; cursor:pointer; font-weight:bold; font-size:13px; white-space:nowrap;">📥 CSV</button>
                     </div>
                     <div class="bookings-list" id="bookingsList"></div>
@@ -1243,42 +1243,101 @@
             return new Date(+y, +m - 1, +d);
         }
 
-        async function loadAdminBookings() {
-            const filterDay = document.getElementById('filterDay')?.value || '';
-            const filterClass = document.getElementById('filterClass')?.value || '';
-            const search = (document.getElementById('searchBookings')?.value || '').toLowerCase().trim();
-            const sortDir = document.getElementById('sortBookings')?.value || 'asc';
+        // ----- Календар: състояние и помощни функции -----
+        let bookingsView = 'active';
+        let selectedMonday = null;   // понеделник 00:00 на избраната седмица
+        let selectedDay = null;      // 'YYYY-MM-DD' ако е избран конкретен ден, иначе null
 
-            let query = bookingsView === 'expired'
-                ? sb.from('bookings').select('*').eq('is_deleted', true)
-                : sb.from('bookings').select('*').or('is_deleted.eq.false,is_deleted.is.null');
-            if (filterDay) query = query.eq('day', filterDay);
-            if (filterClass) query = query.eq('class', filterClass);
+        const BG_MONTHS = ['Януари','Февруари','Март','Април','Май','Юни','Юли','Август','Септември','Октомври','Ноември','Декември'];
+        const BG_DAYS = ['Неделя','Понеделник','Вторник','Сряда','Четвъртък','Петък','Събота']; // индекс = getDay()
+        const DAY_TO_IDX = { 'Неделя':0,'Понеделник':1,'Вторник':2,'Сряда':3,'Четвъртък':4,'Петък':5,'Събота':6 };
 
-            const { data } = await query;
-            let bookings = data || [];
-            if (search) bookings = bookings.filter(b =>
-                (b.name || '').toLowerCase().includes(search) ||
-                (b.phone || '').includes(search)
-            );
+        function mondayOf(date) {
+            const d = new Date(date); d.setHours(0,0,0,0);
+            const wd = d.getDay();
+            d.setDate(d.getDate() - (wd === 0 ? 6 : wd - 1));
+            return d;
+        }
+        function addDays(date, n) { const d = new Date(date); d.setDate(d.getDate() + n); return d; }
+        function ymd(date) {
+            const d = new Date(date);
+            return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+        }
 
-            bookings.sort((a, b) => {
-                const da = parseBgDate(a.date);
-                const db = parseBgDate(b.date);
-                if (!da && !db) return 0;
-                if (!da) return 1;
-                if (!db) return -1;
-                return sortDir === 'asc' ? da - db : db - da;
-            });
-            adminBookings = bookings;
-            const countEl = document.getElementById('bookingsCount');
-            if (countEl) countEl.textContent = adminBookings.length + (bookingsView === 'expired' ? ' изтрити' : ' записани');
-            const list = document.getElementById('bookingsList');
-            if (adminBookings.length === 0) {
-                list.innerHTML = '<div class="empty">Няма записания</div>';
-                return;
+        // Реалната дата на тренировката за дадена резервация — изчислена, без промяна по базата.
+        // 1) Ако има изрична дата (дд.мм.гггг) — нея. 2) Иначе възстановяваме деня, който е бил
+        // показан при записването (от created_at + името на деня) — точно както в графика.
+        function bookingSessionDate(b) {
+            if (b.date) { const d = parseBgDate(b.date); if (d) { d.setHours(0,0,0,0); return d; } }
+            if (b.created_at && b.day && DAY_TO_IDX[b.day] !== undefined) {
+                const c = new Date(b.created_at); c.setHours(0,0,0,0);
+                let diff = DAY_TO_IDX[b.day] - c.getDay();
+                if (diff < 0) diff += 7;
+                return addDays(c, diff);
             }
-            list.innerHTML = adminBookings.map(b => `
+            return null;
+        }
+
+        function formatWeekRange(monday) {
+            const sun = addDays(monday, 6);
+            if (monday.getMonth() === sun.getMonth())
+                return `${monday.getDate()} - ${sun.getDate()} ${BG_MONTHS[sun.getMonth()]}`;
+            return `${monday.getDate()} ${BG_MONTHS[monday.getMonth()]} - ${sun.getDate()} ${BG_MONTHS[sun.getMonth()]}`;
+        }
+
+        function updateWeekUI() {
+            if (!selectedMonday) selectedMonday = mondayOf(new Date());
+            const curMon = mondayOf(new Date());
+            const diffWeeks = Math.round((selectedMonday - curMon) / (7 * 86400000));
+            let prefix = '';
+            if (diffWeeks === 0) prefix = 'Текуща седмица';
+            else if (diffWeeks === -1) prefix = 'Минала седмица';
+            else if (diffWeeks === 1) prefix = 'Следваща седмица';
+            const range = formatWeekRange(selectedMonday) + ' ' + addDays(selectedMonday,6).getFullYear();
+            const labelEl = document.getElementById('weekLabel');
+            if (labelEl) {
+                const badge = prefix
+                    ? `<span style="display:inline-block; background:${diffWeeks===0?'#27ae60':'#888'}; color:#fff; padding:2px 10px; border-radius:12px; font-size:0.75rem; margin-right:8px;">${prefix}</span>`
+                    : '';
+                labelEl.innerHTML = badge + `📅 ${range}`;
+            }
+            const bt = document.getElementById('btnThisWeek'), bl = document.getElementById('btnLastWeek');
+            if (bt) { bt.style.background = (diffWeeks===0 && !selectedDay) ? 'var(--primary)' : '#eee'; bt.style.color = (diffWeeks===0 && !selectedDay) ? '#fff' : '#555'; }
+            if (bl) { bl.style.background = (diffWeeks===-1 && !selectedDay) ? 'var(--primary)' : '#eee'; bl.style.color = (diffWeeks===-1 && !selectedDay) ? '#fff' : '#555'; }
+            const clr = document.getElementById('dayClearRow');
+            if (clr) clr.style.display = selectedDay ? 'block' : 'none';
+        }
+
+        function changeWeek(delta) {
+            selectedMonday = addDays(selectedMonday || mondayOf(new Date()), delta * 7);
+            selectedDay = null;
+            const p = document.getElementById('pickDate'); if (p) p.value = '';
+            updateWeekUI(); loadAdminBookings();
+        }
+        function selectThisWeek() {
+            selectedMonday = mondayOf(new Date()); selectedDay = null;
+            const p = document.getElementById('pickDate'); if (p) p.value = '';
+            updateWeekUI(); loadAdminBookings();
+        }
+        function selectLastWeek() {
+            selectedMonday = addDays(mondayOf(new Date()), -7); selectedDay = null;
+            const p = document.getElementById('pickDate'); if (p) p.value = '';
+            updateWeekUI(); loadAdminBookings();
+        }
+        function pickSpecificDate(val) {
+            if (!val) return;
+            const d = new Date(val + 'T00:00:00');
+            selectedMonday = mondayOf(d); selectedDay = ymd(d);
+            updateWeekUI(); loadAdminBookings();
+        }
+        function clearSpecificDate() {
+            selectedDay = null;
+            const p = document.getElementById('pickDate'); if (p) p.value = '';
+            updateWeekUI(); loadAdminBookings();
+        }
+
+        function bookingItemHTML(b) {
+            return `
                 <div class="booking-item" style="border-left-color: ${b.is_deleted ? '#bbb' : b.is_child ? '#e67e22' : 'var(--primary)'}">
                     <strong>${b.name} ${b.is_child ? '👶 ДЕТЕ' : ''}</strong>
                     <small>📞 ${b.phone}</small>
@@ -1289,11 +1348,60 @@
                         ? `<button onclick="restoreBooking(${b.id})" style="background:#27ae60;color:white;border:none;padding:5px 12px;border-radius:5px;cursor:pointer;font-size:0.85rem;">↩ Върни</button>`
                         : `<button class="delete-btn" onclick="deleteBooking(${b.id}, '${(b.name||'').replace(/'/g,"\\'")}', '${b.day}', '${b.time}')">Изтрий</button>`
                     }
-                </div>
-            `).join('');
+                </div>`;
         }
 
-        let bookingsView = 'active';
+        async function loadAdminBookings() {
+            if (!selectedMonday) selectedMonday = mondayOf(new Date());
+            const filterClass = document.getElementById('filterClass')?.value || '';
+            const search = (document.getElementById('searchBookings')?.value || '').toLowerCase().trim();
+
+            let query = bookingsView === 'expired'
+                ? sb.from('bookings').select('*').eq('is_deleted', true)
+                : sb.from('bookings').select('*').or('is_deleted.eq.false,is_deleted.is.null');
+            if (filterClass) query = query.eq('class', filterClass);
+
+            const { data } = await query;
+            let bookings = data || [];
+            if (search) bookings = bookings.filter(b =>
+                (b.name || '').toLowerCase().includes(search) || (b.phone || '').includes(search)
+            );
+
+            const weekStart = new Date(selectedMonday); weekStart.setHours(0,0,0,0);
+            const weekEnd = addDays(weekStart, 7); // ексклузивно
+
+            bookings.forEach(b => b._sd = bookingSessionDate(b));
+            const inRange = bookings.filter(b => {
+                if (!b._sd) return false;
+                if (selectedDay) return ymd(b._sd) === selectedDay;
+                return b._sd >= weekStart && b._sd < weekEnd;
+            });
+
+            adminBookings = inRange; // за CSV и брояча
+            const countEl = document.getElementById('bookingsCount');
+            if (countEl) countEl.textContent = inRange.length + (bookingsView === 'expired' ? ' изтрити' : ' резервации');
+
+            const list = document.getElementById('bookingsList');
+            if (inRange.length === 0) {
+                list.innerHTML = '<div class="empty">Няма резервации за този период</div>';
+                return;
+            }
+
+            // Групирай по ден (по дата на тренировката), подреди дните и часовете възходящо
+            const groups = {};
+            inRange.forEach(b => { const k = ymd(b._sd); (groups[k] = groups[k] || []).push(b); });
+            list.innerHTML = Object.keys(groups).sort().map(k => {
+                const d = new Date(k + 'T00:00:00');
+                const header = `${BG_DAYS[d.getDay()]} — ${d.getDate()}.${String(d.getMonth()+1).padStart(2,'0')}`;
+                const items = groups[k]
+                    .sort((a, b) => (a.time || '').localeCompare(b.time || ''))
+                    .map(bookingItemHTML).join('');
+                return `<div style="margin-bottom:16px;">
+                    <div style="background:var(--primary); color:#fff; padding:8px 12px; border-radius:8px; font-weight:bold; margin-bottom:8px;">${header} <span style="opacity:0.85; font-weight:normal;">(${groups[k].length})</span></div>
+                    ${items}
+                </div>`;
+            }).join('');
+        }
 
         function setBookingsView(view) {
             bookingsView = view;
@@ -1324,6 +1432,10 @@
         }
 
         async function loadBookingsList() {
+            selectedMonday = mondayOf(new Date()); // винаги стартирай от текущата седмица
+            selectedDay = null;
+            const p = document.getElementById('pickDate'); if (p) p.value = '';
+            updateWeekUI();
             await populateClassFilter();
             await loadAdminBookings();
         }
@@ -1338,18 +1450,6 @@
             const classes = [...new Set((data || []).map(r => r.class).filter(Boolean))].sort();
             sel.innerHTML = '<option value="">Всички тренировки</option>' +
                 classes.map(c => `<option${c === current ? ' selected' : ''}>${c}</option>`).join('');
-        }
-
-        async function deleteBookingsByDate() {
-            const dateVal = document.getElementById('deleteByDate').value.trim();
-            if (!dateVal) { alert('Въведи дата!'); return; }
-            if (!parseBgDate(dateVal)) { alert('Невалидна дата! Използвай формат дд.мм.гггг'); return; }
-            if (!confirm(`Изтриване на всички записвания за ${dateVal}?\n\nСигурен ли си?`)) return;
-            const { error } = await sb.from('bookings').update({ is_deleted: true }).eq('date', dateVal).or('is_deleted.eq.false,is_deleted.is.null');
-            if (error) { alert('Грешка при изтриване!'); return; }
-            document.getElementById('deleteByDate').value = '';
-            await loadAdminBookings();
-            alert(`✓ Записванията за ${dateVal} са изтрити`);
         }
 
         async function deleteBooking(id, name, day, time) {
@@ -1530,6 +1630,7 @@
                                 <option value="">-- Тренировка --</option>
                                 <option>Аеробика и Табата</option>
                                 <option>РГ и Мобилност</option>
+                                <option>Нискоинтензивна Аеробика</option>
                                 <option>Индивидуална тренировка</option>
                                 <option>Рехабилитационна програма</option>
                             </select>
