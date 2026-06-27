@@ -538,16 +538,30 @@
         };
 
         // Supabase функции
-        let allBookings = [];
+        let allBookings = [];        // САМО активни (неизтрити) — за публичните бройки места
+        let adminBookings = [];      // текущият филтриран изглед в админ панела (отделен!)
         let currentCapacity = 10;
+
+        // Единствен източник на истина: "активно" записване = is_deleted е false ИЛИ NULL.
+        // Старите записи (преди да добавим колоната) имат NULL и трябва да се третират като активни.
+        function activeBookingsQuery(select = '*', opts) {
+            return sb.from('bookings').select(select, opts).or('is_deleted.eq.false,is_deleted.is.null');
+        }
+
+        // Презарежда активните записвания в allBookings и пречертава графика с верни бройки.
+        async function refreshPublicBookings() {
+            const { data } = await activeBookingsQuery();
+            if (data) allBookings = data;
+            loadSchedule();
+        }
 
         async function loadData() {
             // Зареди капацитет
             const { data: cap } = await sb.from('capacity').select('value').single();
             if (cap) currentCapacity = cap.value;
 
-            // Зареди записвания
-            const { data: bk } = await sb.from('bookings').select('*');
+            // Зареди записвания — САМО активните (изтритите не заемат места)
+            const { data: bk } = await activeBookingsQuery();
             if (bk) allBookings = bk;
 
             // Зареди график от Supabase
@@ -572,8 +586,14 @@
 
         function getBookingsCount(day, time, date) {
             const norm = t => t ? t.substring(0, 5) : t;
-            if (date) return 0; // дата-специфични слотове — не броим стари записвания
-            // За редовни слотове — брой само записвания от тази седмица
+            // allBookings вече съдържа САМО активни записвания (виж activeBookingsQuery).
+            if (date) {
+                // Дата-специфичен слот: брой записванията точно за тази дата и час.
+                return allBookings.filter(b =>
+                    b.day === day && norm(b.time) === norm(time) && b.date === date
+                ).length;
+            }
+            // Повтарящ се слот (без дата): брой записванията за деня+часа от текущата седмица.
             const now = new Date();
             const dayOfWeek = now.getDay(); // 0=Неделя, 1=Понеделник...
             const monday = new Date(now);
@@ -584,6 +604,7 @@
             sunday.setHours(23, 59, 59, 999);
             return allBookings.filter(b => {
                 if (b.day !== day || norm(b.time) !== norm(time)) return false;
+                if (b.date) return false; // дата-специфичните се броят отделно
                 const created = new Date(b.created_at);
                 return created >= monday && created <= sunday;
             }).length;
@@ -860,28 +881,18 @@
         // Проверка дали клиентът има карта
         async function checkCard(phone) {
             const today = new Date().toISOString().split('T')[0];
+            // supabase-js не поддържа колона-към-колона сравнение (sb.raw не съществува) —
+            // затова филтрираме оставащите тренировки в JS.
             const { data } = await sb.from('cards')
                 .select('*')
                 .eq('phone', phone)
-                .gte('expires_at', today)
-                .lt('trainings_used', sb.raw('trainings_total'))
-                .limit(1);
-            return data && data.length > 0 ? data[0] : null;
+                .eq('active', true)
+                .gte('expires_at', today);
+            const valid = (data || []).find(c => (c.trainings_used || 0) < (c.trainings_total || 0));
+            return valid || null;
         }
 
         // Проверка дали е тази седмица
-        function isThisWeek(day) {
-            const days = { 'Понеделник': 1, 'Вторник': 2, 'Сряда': 3, 'Четвъртък': 4, 'Петък': 5, 'Събота': 6, 'Неделя': 0 };
-            const today = new Date();
-            const todayDay = today.getDay();
-            const targetDay = days[day];
-            let diff = targetDay - todayDay;
-            if (diff < 0) diff += 7;
-            // В неделя (0) може следваща седмица
-            if (todayDay === 0) return true;
-            return diff <= 6;
-        }
-
         async function loadCardsAdmin() {
             const today = new Date().toISOString().split('T')[0];
             const filter = document.getElementById('filterCards')?.value || '';
@@ -902,8 +913,10 @@
                 return;
             }
 
-            // Раздели на чакащи активиране и активни
-            const pending = data.filter(c => c.active === false);
+            // Раздели на чакащи активиране и активни.
+            // Всичко, което НЕ е изрично active===true (вкл. NULL от стари записи), отива в "чакащи",
+            // за да не изчезват карти с непопълнена стойност.
+            const pending = data.filter(c => c.active !== true);
             const active = data.filter(c => c.active === true);
 
             let html = '';
@@ -1123,24 +1136,25 @@
                 class: document.getElementById('bookingClass').value,
                 price: document.getElementById('bookingPrice').value,
                 payment: document.getElementById('bookingPayment').value || 'на място',
-                is_child: document.getElementById('isChild').checked
+                is_child: document.getElementById('isChild').checked,
+                is_deleted: false
             };
 
-            // Провери за дублирано записване
-            const { data: existing } = await sb.from('bookings')
-                .select('id')
+            // Провери за дублирано записване — само сред АКТИВНИТЕ (изтрито не блокира) и за същата дата
+            const { data: existing } = await activeBookingsQuery('id, date')
                 .eq('phone', booking.phone)
                 .eq('day', booking.day)
                 .eq('time', booking.time);
 
-            if (existing && existing.length > 0) {
+            const dupe = (existing || []).some(b => (b.date || null) === (booking.date || null));
+            if (dupe) {
                 alert('⚠️ Вече сте записани за тази тренировка!');
                 return;
             }
 
-            const { error } = await sb.from('bookings').insert([booking]);
+            const { data: inserted, error } = await sb.from('bookings').insert([booking]).select();
             if (error) { alert('Грешка при записване!'); return; }
-            allBookings.push(booking);
+            if (inserted && inserted[0]) allBookings.push(inserted[0]);
             await checkAndAwardBadges(booking.phone);
 
             // Обнови карта ако е използвана
@@ -1256,15 +1270,15 @@
                 if (!db) return -1;
                 return sortDir === 'asc' ? da - db : db - da;
             });
-            allBookings = bookings;
+            adminBookings = bookings;
             const countEl = document.getElementById('bookingsCount');
-            if (countEl) countEl.textContent = allBookings.length + (bookingsView === 'expired' ? ' изтрити' : ' записани');
+            if (countEl) countEl.textContent = adminBookings.length + (bookingsView === 'expired' ? ' изтрити' : ' записани');
             const list = document.getElementById('bookingsList');
-            if (allBookings.length === 0) {
+            if (adminBookings.length === 0) {
                 list.innerHTML = '<div class="empty">Няма записания</div>';
                 return;
             }
-            list.innerHTML = allBookings.map(b => `
+            list.innerHTML = adminBookings.map(b => `
                 <div class="booking-item" style="border-left-color: ${b.is_deleted ? '#bbb' : b.is_child ? '#e67e22' : 'var(--primary)'}">
                     <strong>${b.name} ${b.is_child ? '👶 ДЕТЕ' : ''}</strong>
                     <small>📞 ${b.phone}</small>
@@ -1298,7 +1312,7 @@
             const monday = new Date(today);
             monday.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
 
-            const { data: all } = await sb.from('bookings').select('id, date, created_at').eq('is_deleted', false);
+            const { data: all } = await activeBookingsQuery('id, date, created_at');
             if (!all) return;
             const toMark = all.filter(b => {
                 if (b.date) { const d = parseBgDate(b.date); return d && d < today; }
@@ -1310,7 +1324,20 @@
         }
 
         async function loadBookingsList() {
+            await populateClassFilter();
             await loadAdminBookings();
+        }
+
+        // Запълва падащото меню "тип тренировка" с РЕАЛНО съществуващите класове от базата,
+        // за да не изчезват записвания, чийто клас липсва в твърдо зададен списък.
+        async function populateClassFilter() {
+            const sel = document.getElementById('filterClass');
+            if (!sel) return;
+            const current = sel.value;
+            const { data } = await sb.from('bookings').select('class');
+            const classes = [...new Set((data || []).map(r => r.class).filter(Boolean))].sort();
+            sel.innerHTML = '<option value="">Всички тренировки</option>' +
+                classes.map(c => `<option${c === current ? ' selected' : ''}>${c}</option>`).join('');
         }
 
         async function deleteBookingsByDate() {
@@ -1380,9 +1407,9 @@
         }
 
         function exportBookingsCSV() {
-            if (!allBookings || allBookings.length === 0) { alert('Няма записвания за изтегляне!'); return; }
+            if (!adminBookings || adminBookings.length === 0) { alert('Няма записвания за изтегляне!'); return; }
             const headers = ['Име', 'Телефон', 'Ден', 'Дата', 'Час', 'Тренировка', 'Цена', 'Плащане', 'Дете', 'Добавено'];
-            const rows = allBookings.map(b => [
+            const rows = adminBookings.map(b => [
                 b.name || '', b.phone || '', b.day || '', b.date || '', b.time || '',
                 b.class || '', b.price || '', b.payment || '',
                 b.is_child ? 'Да' : 'Не',
@@ -1438,10 +1465,7 @@
         }
 
         async function saveSchedule() {
-            // Изтрий всички стари записи
-            await sb.from('schedule').delete().neq('id', 0);
-
-            // Вземи всички редове от формата директно
+            // Първо събери редовете от формата (БЕЗ да трием още нищо)
             const rows = [];
             const dayDivs = document.querySelectorAll('#scheduleEditList > div[data-day]');
             dayDivs.forEach(dayDiv => {
@@ -1456,6 +1480,13 @@
                 });
             });
 
+            // Защита: ако формата е празна, не трий целия график без изрично потвърждение
+            if (rows.length === 0) {
+                if (!confirm('Графикът е празен. Сигурен ли си, че искаш да изтриеш ВСИЧКИ тренировки?')) return;
+            }
+
+            // Чак сега изтрий старите и запиши новите
+            await sb.from('schedule').delete().neq('id', 0);
             if (rows.length > 0) {
                 const { error } = await sb.from('schedule').insert(rows);
                 if (error) { alert('Грешка при запазване!'); return; }
@@ -1549,7 +1580,7 @@
             if (!phone) return;
             const { data: existing } = await sb.from('badges').select('badge_type').eq('user_phone', phone);
             const earned = new Set((existing || []).map(b => b.badge_type));
-            const { data: bookings } = await sb.from('bookings').select('*').eq('phone', phone);
+            const { data: bookings } = await activeBookingsQuery('*').eq('phone', phone);
             const total = bookings?.length || 0;
             const toAward = [];
             if (total >= 1 && !earned.has('first_training')) toAward.push('first_training');
@@ -1719,13 +1750,13 @@
             const startDate = '2026-06-08';
 
             const [{ count: bookings }, { count: cards }, { count: reviews }] = await Promise.all([
-                sb.from('bookings').select('*', { count: 'exact', head: true }).gte('created_at', startDate),
+                activeBookingsQuery('*', { count: 'exact', head: true }).gte('created_at', startDate),
                 sb.from('cards').select('*', { count: 'exact', head: true }),
                 sb.from('reviews').select('*', { count: 'exact', head: true })
             ]);
 
             // Уникални клиенти по телефон - всички
-            const { data: phones } = await sb.from('bookings').select('phone');
+            const { data: phones } = await activeBookingsQuery('phone');
             const uniqueClients = new Set((phones || []).map(p => p.phone)).size;
 
             document.getElementById('statBookings').textContent = bookings || 0;
@@ -1739,7 +1770,7 @@
             const phone = phoneEl?.value.trim();
             if (!phone) { alert('Въведи телефон!'); return; }
 
-            const { data } = await sb.from('bookings').select('*').eq('phone', phone).order('created_at', { ascending: false });
+            const { data } = await activeBookingsQuery('*').eq('phone', phone).order('created_at', { ascending: false });
             const list = document.getElementById('profileMyBookingsList') || document.getElementById('myBookingsList');
 
             if (!data || data.length === 0) {
@@ -1760,10 +1791,11 @@
 
         async function unsubscribe(id) {
             if (confirm('Сигурен ли си че искаш да се отпишеш?')) {
-                await sb.from('bookings').delete().eq('id', id);
+                // Меко изтриване — остава в "Изтрити" в админа и може да се върне
+                await sb.from('bookings').update({ is_deleted: true }).eq('id', id);
                 alert('✓ Успешно отписан!');
                 loadMyBookings();
-                loadData();
+                refreshPublicBookings();
             }
         }
 
@@ -1991,7 +2023,7 @@
             if (!phone) return;
 
             // Записвания
-            const { data: bks } = await sb.from('bookings').select('*').eq('phone', phone).order('created_at', { ascending: false });
+            const { data: bks } = await activeBookingsQuery('*').eq('phone', phone).order('created_at', { ascending: false });
             loadMonthlyGoal(bks);
             const bList = document.getElementById('profileBookings');
             if (!bks || bks.length === 0) {
@@ -2044,8 +2076,10 @@
 
         async function profileUnsubscribe(id) {
             if (!confirm('Сигурен ли си?')) return;
-            await sb.from('bookings').delete().eq('id', id);
+            // Меко изтриване — може да се върне от админа
+            await sb.from('bookings').update({ is_deleted: true }).eq('id', id);
             loadProfileData();
+            refreshPublicBookings();
         }
 
         // Monthly Goal
