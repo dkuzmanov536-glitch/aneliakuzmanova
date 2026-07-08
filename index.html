@@ -567,15 +567,11 @@
         }
 
         async function loadData() {
-            // Зареди капацитет (резервна единична стойност)
-            const { data: cap } = await sb.from('capacity').select('value').single();
-            if (cap) currentCapacity = cap.value;
-
-            // Зареди капацитетите по вид тренировка от settings
-            const { data: caps } = await sb.from('settings').select('key, value').in('key', ['cap_aerobika', 'cap_rg']);
-            (caps || []).forEach(s => {
-                if (s.key === 'cap_aerobika' && s.value) capAerobika = parseInt(s.value) || capAerobika;
-                if (s.key === 'cap_rg' && s.value) capRG = parseInt(s.value) || capRG;
+            // Капацитет по вид тренировка (таблица capacity: ред id=1 = аеробика, ред id=2 = РГ и Мобилност)
+            const { data: caps } = await sb.from('capacity').select('id, value');
+            (caps || []).forEach(row => {
+                if (row.id === 1 && row.value) { capAerobika = row.value; currentCapacity = row.value; }
+                if (row.id === 2 && row.value) capRG = row.value;
             });
 
             // Зареди записвания — САМО активните (изтритите не заемат места)
@@ -1595,12 +1591,12 @@
             const a = parseInt(document.getElementById('capAerobikaInput').value);
             const r = parseInt(document.getElementById('capRGInput').value);
             if (!(a > 0) || !(r > 0)) { alert('Въведи валиден капацитет!'); return; }
-            capAerobika = a; capRG = r;
-            const { error } = await sb.from('settings').upsert([
-                { key: 'cap_aerobika', value: String(a) },
-                { key: 'cap_rg', value: String(r) }
-            ]);
-            if (error) { alert('Грешка при запазване!'); return; }
+            const { error } = await sb.from('capacity').upsert(
+                [{ id: 1, value: a }, { id: 2, value: r }],
+                { onConflict: 'id' }
+            );
+            if (error) { alert('Грешка при запазване: ' + error.message); return; }
+            capAerobika = a; capRG = r; currentCapacity = a;
             alert(`Капацитетът е запазен:\n🤸‍♀️ Аеробика — ${a} места\n🧘‍♀️ РГ и Мобилност — ${r} места`);
             loadSchedule();
         }
