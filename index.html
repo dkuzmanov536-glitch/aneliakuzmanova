@@ -275,11 +275,13 @@
             </div>
             <div class="class-card">
                 <h3>Индивидуална тренировка</h3>
+                <div style="color:#000; font-weight:bold; margin-bottom:4px;">30 минути</div>
                 <div class="price">10€</div>
                 <a href="viber://chat?number=%2B359879360792" class="btn" style="margin-top: 15px; width: 100%; display: block; text-align: center; text-decoration: none;">Свържи се с треньора</a>
             </div>
             <div class="class-card">
                 <h3>Рехабилитационна програма</h3>
+                <div style="color:#000; font-weight:bold; margin-bottom:4px;">за 2 седмици</div>
                 <div class="price">35€</div>
                 <a href="viber://chat?number=%2B359879360792" class="btn" style="margin-top: 15px; width: 100%; display: block; text-align: center; text-decoration: none;">Свържи се с треньора</a>
             </div>
@@ -540,7 +542,16 @@
         // Supabase функции
         let allBookings = [];        // САМО активни (неизтрити) — за публичните бройки места
         let adminBookings = [];      // текущият филтриран изглед в админ панела (отделен!)
-        let currentCapacity = 10;
+        let currentCapacity = 10;    // резервен капацитет по подразбиране
+        let capAerobika = 12;        // капацитет за аеробика (аеробика+табата, нискоинтензивна аеробика, аеробика)
+        let capRG = 10;              // капацитет за РГ и Мобилност (и всичко останало)
+
+        // Капацитетът зависи от вида тренировка.
+        function capacityForClass(cls) {
+            const c = (cls || '').toLowerCase();
+            if (c.includes('аеробика') || c.includes('табата')) return capAerobika;
+            return capRG; // РГ, Мобилност и останалите
+        }
 
         // Единствен източник на истина: "активно" записване = is_deleted е false ИЛИ NULL.
         // Старите записи (преди да добавим колоната) имат NULL и трябва да се третират като активни.
@@ -556,9 +567,16 @@
         }
 
         async function loadData() {
-            // Зареди капацитет
+            // Зареди капацитет (резервна единична стойност)
             const { data: cap } = await sb.from('capacity').select('value').single();
             if (cap) currentCapacity = cap.value;
+
+            // Зареди капацитетите по вид тренировка от settings
+            const { data: caps } = await sb.from('settings').select('key, value').in('key', ['cap_aerobika', 'cap_rg']);
+            (caps || []).forEach(s => {
+                if (s.key === 'cap_aerobika' && s.value) capAerobika = parseInt(s.value) || capAerobika;
+                if (s.key === 'cap_rg' && s.value) capRG = parseInt(s.value) || capRG;
+            });
 
             // Зареди записвания — САМО активните (изтритите не заемат места)
             const { data: bk } = await activeBookingsQuery();
@@ -1043,8 +1061,18 @@
             return currentCapacity;
         }
 
+        // Реалната дата на един блок от графика: изричната дата, иначе следващото
+        // появяване на деня — за да сортираме дните по дата (най-ранната първо).
+        function resolveGroupDate(day, date) {
+            if (date) { const d = parseSlotDate(date); if (d) return d.getTime(); }
+            const today = new Date(); today.setHours(0, 0, 0, 0);
+            const idx = DAY_TO_IDX[day];
+            let diff = (idx == null ? 0 : idx - today.getDay());
+            if (diff < 0) diff += 7;
+            return addDays(today, diff).getTime();
+        }
+
         function loadSchedule() {
-            const capacity = getCapacity();
             // Групирай по ден + дата (за да може един ден да има няколко блока с различни дати)
             const groups = [];
             Object.entries(schedule).forEach(([day, slots]) => {
@@ -1059,12 +1087,14 @@
                     groups.push({ day, date, slots: groupSlots });
                 });
             });
+            // Подреди дните по реална дата — най-ранната първа
+            groups.sort((a, b) => resolveGroupDate(a.day, a.date) - resolveGroupDate(b.day, b.date));
             const html = groups.map(({ day, date, slots }) => `
                 <div class="day-schedule">
                     <div class="day-header">${day} <span style="color:var(--primary); font-size:0.9rem;">${date || getNextDate(day)}</span></div>
                     ${slots.map(slot => {
                         const count = getBookingsCount(day, slot.time, slot.date);
-                        const remaining = capacity - count;
+                        const remaining = capacityForClass(slot.class) - count;
                         const full = remaining <= 0;
                         return `
                         <div class="time-slot">
@@ -1526,15 +1556,22 @@
         }
 
         function loadScheduleEdit() {
-            const capacity = getCapacity();
             const list = document.getElementById('scheduleEditList');
             list.innerHTML = `
                 <div style="background: #fff3cd; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
-                    <h4 style="margin-bottom: 10px;"> Капацитет на залата</h4>
-                    <div style="display: flex; gap: 10px; align-items: center;">
-                        <input type="number" id="capacityInput" value="${capacity}" min="1" style="width: 80px; padding: 8px; border: 1px solid #ddd; border-radius: 5px;">
-                        <span>места</span>
-                        <button class="btn" onclick="saveCapacity()">Потвърди</button>
+                    <h4 style="margin-bottom: 12px;">Капацитет на залата</h4>
+                    <div style="display:flex; flex-direction:column; gap:10px;">
+                        <div style="display:flex; gap:10px; align-items:center;">
+                            <span style="flex:1;">🤸‍♀️ Аеробика <small style="color:#777;">(вкл. табата, нискоинтензивна)</small></span>
+                            <input type="number" id="capAerobikaInput" value="${capAerobika}" min="1" style="width:70px; padding:8px; border:1px solid #ddd; border-radius:5px;">
+                            <span>места</span>
+                        </div>
+                        <div style="display:flex; gap:10px; align-items:center;">
+                            <span style="flex:1;">🧘‍♀️ РГ и Мобилност</span>
+                            <input type="number" id="capRGInput" value="${capRG}" min="1" style="width:70px; padding:8px; border:1px solid #ddd; border-radius:5px;">
+                            <span>места</span>
+                        </div>
+                        <button class="btn" onclick="saveCapacity()" style="align-self:flex-start;">Потвърди</button>
                     </div>
                 </div>
                 ${Object.entries(schedule).map(([day, slots], dayIdx) => `
@@ -1555,13 +1592,17 @@
         }
 
         async function saveCapacity() {
-            const val = parseInt(document.getElementById('capacityInput').value);
-            if (val > 0) {
-                await sb.from('capacity').update({ value: val }).eq('id', 1);
-                currentCapacity = val;
-                alert('Капацитетът е запазен: ' + val + ' места');
-                loadSchedule();
-            }
+            const a = parseInt(document.getElementById('capAerobikaInput').value);
+            const r = parseInt(document.getElementById('capRGInput').value);
+            if (!(a > 0) || !(r > 0)) { alert('Въведи валиден капацитет!'); return; }
+            capAerobika = a; capRG = r;
+            const { error } = await sb.from('settings').upsert([
+                { key: 'cap_aerobika', value: String(a) },
+                { key: 'cap_rg', value: String(r) }
+            ]);
+            if (error) { alert('Грешка при запазване!'); return; }
+            alert(`Капацитетът е запазен:\n🤸‍♀️ Аеробика — ${a} места\n🧘‍♀️ РГ и Мобилност — ${r} места`);
+            loadSchedule();
         }
 
         async function saveSchedule() {
