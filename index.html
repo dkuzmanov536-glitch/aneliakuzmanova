@@ -418,6 +418,24 @@
                             <option value="12">12 тренировки</option>
                         </select>
                     </div>
+
+                    <!-- Добави карта (само по име) -->
+                    <div style="background:#f9f9f9; padding:15px; border-radius:10px; margin-bottom:15px;">
+                        <h4 style="margin-bottom:10px;">➕ Добави карта</h4>
+                        <div style="display:flex; flex-direction:column; gap:8px;">
+                            <input type="text" id="newCardName" placeholder="Име (задължително)" style="padding:9px 12px; border:1px solid #ddd; border-radius:5px; font-family:Arial,sans-serif;">
+                            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                                <select id="newCardType" style="flex:1; min-width:130px; padding:9px; border:1px solid #ddd; border-radius:5px; font-family:Arial,sans-serif;">
+                                    <option value="12">12 тренировки</option>
+                                    <option value="6">6 тренировки</option>
+                                </select>
+                                <input type="date" id="newCardExpires" title="Валидна до (по избор)" style="flex:1; min-width:130px; padding:8px; border:1px solid #ddd; border-radius:5px; font-family:Arial,sans-serif;">
+                            </div>
+                            <input type="tel" id="newCardPhone" placeholder="Телефон (по избор)" style="padding:9px 12px; border:1px solid #ddd; border-radius:5px; font-family:Arial,sans-serif;">
+                            <button class="btn" onclick="addCardAdmin()" style="width:100%;">Добави карта</button>
+                        </div>
+                    </div>
+
                     <div id="cardsAdminList"></div>
                 </div>
 
@@ -469,10 +487,10 @@
             <form onsubmit="submitBooking(event)">
                 <label>Име:</label>
                 <input type="text" id="bookingName" required>
-                <label>Фамилия:</label>
-                <input type="text" id="bookingSurname" required>
-                <label>Телефон:</label>
-                <input type="tel" id="bookingPhone" required>
+                <label>Фамилия (по избор):</label>
+                <input type="text" id="bookingSurname">
+                <label>Телефон (по избор):</label>
+                <input type="tel" id="bookingPhone">
                 <label>Ден:</label>
                 <input type="text" id="bookingDay" readonly>
                 <input type="hidden" id="bookingDate">
@@ -1040,6 +1058,35 @@
             }
         }
 
+        // Добавяне на карта от админ панела — задължително е само името
+        async function addCardAdmin() {
+            const name = document.getElementById('newCardName').value.trim();
+            if (!name) { alert('Въведи име!'); return; }
+            const total = parseInt(document.getElementById('newCardType').value) || 12;
+            const phone = document.getElementById('newCardPhone').value.trim();
+            let expires = document.getElementById('newCardExpires').value;
+            if (!expires) { // по подразбиране валидна 1 месец напред
+                const d = new Date(); d.setMonth(d.getMonth() + 1);
+                expires = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+            }
+            const card = {
+                name,
+                phone: phone || null,
+                card_type: total + ' тренировки',
+                trainings_total: total,
+                trainings_used: 0,
+                expires_at: expires,
+                active: true
+            };
+            const { error } = await sb.from('cards').insert([card]);
+            if (error) { alert('Грешка: ' + error.message); return; }
+            document.getElementById('newCardName').value = '';
+            document.getElementById('newCardPhone').value = '';
+            document.getElementById('newCardExpires').value = '';
+            loadCardsAdmin();
+            alert('✓ Картата е добавена');
+        }
+
         function getNextDate(dayName) {
             const days = { 'Понеделник': 1, 'Вторник': 2, 'Сряда': 3, 'Четвъртък': 4, 'Петък': 5, 'Събота': 6, 'Неделя': 0 };
             const today = new Date();
@@ -1153,9 +1200,11 @@
 
         async function submitBooking(e) {
             e.preventDefault();
+            const bName = (document.getElementById('bookingName').value + ' ' + document.getElementById('bookingSurname').value).trim();
+            if (!bName) { alert('Въведи име!'); return; }
             const booking = {
-                name: document.getElementById('bookingName').value + ' ' + document.getElementById('bookingSurname').value,
-                phone: document.getElementById('bookingPhone').value,
+                name: bName,
+                phone: document.getElementById('bookingPhone').value.trim() || null,
                 day: document.getElementById('bookingDay').value,
                 date: document.getElementById('bookingDate').value || null,
                 time: document.getElementById('bookingTime').value,
@@ -1166,12 +1215,10 @@
                 is_deleted: false
             };
 
-            // Провери за дублирано записване — само сред АКТИВНИТЕ (изтрито не блокира) и за същата дата
-            const { data: existing } = await activeBookingsQuery('id, date')
-                .eq('phone', booking.phone)
-                .eq('day', booking.day)
-                .eq('time', booking.time);
-
+            // Провери за дублирано записване — по телефон, а ако няма телефон — по име
+            let dupQuery = activeBookingsQuery('id, date').eq('day', booking.day).eq('time', booking.time);
+            dupQuery = booking.phone ? dupQuery.eq('phone', booking.phone) : dupQuery.eq('name', booking.name);
+            const { data: existing } = await dupQuery;
             const dupe = (existing || []).some(b => (b.date || null) === (booking.date || null));
             if (dupe) {
                 alert('⚠️ Вече сте записани за тази тренировка!');
