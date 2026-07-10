@@ -368,6 +368,7 @@
                         <h4 style="margin-bottom:10px;">➕ Запиши човек (само по име)</h4>
                         <div style="display:flex; flex-direction:column; gap:8px;">
                             <input type="text" id="newResvName" placeholder="Име (задължително)" style="padding:9px 12px; border:1px solid #ddd; border-radius:5px; font-family:Arial,sans-serif;">
+                            <input type="tel" id="newResvPhone" placeholder="Телефон (по избор — за да не се дублира)" style="padding:9px 12px; border:1px solid #ddd; border-radius:5px; font-family:Arial,sans-serif;">
                             <select id="newResvSlot" style="padding:9px; border:1px solid #ddd; border-radius:5px; font-family:Arial,sans-serif;"></select>
                             <input type="date" id="newResvDate" title="Дата (по избор)" style="padding:8px; border:1px solid #ddd; border-radius:5px; font-family:Arial,sans-serif;">
                             <button class="btn" onclick="addReservationAdmin()" style="width:100%;">Запиши</button>
@@ -1546,18 +1547,31 @@
             if (!name) { alert('Въведи име!'); return; }
             const sel = document.getElementById('newResvSlot');
             if (!sel.value) { alert('Избери тренировка!'); return; }
+            const phone = document.getElementById('newResvPhone').value.trim();
             const [day, time, cls, price, slotDate] = sel.value.split('|');
             let date = slotDate || null;
             const override = document.getElementById('newResvDate').value; // ISO YYYY-MM-DD или ''
             if (override) { const [y, m, d] = override.split('-'); date = `${d}.${m}.${y}`; }
             const booking = {
-                name, phone: null, day, date: date || null, time,
+                name, phone: phone || null, day, date: date || null, time,
                 class: cls, price: (price && !String(price).includes('€')) ? price + '€' : price,
                 payment: 'на място', is_child: false, is_deleted: false
             };
+
+            // Проверка за дублиране — по телефон, ако е въведен, иначе по име
+            let dupQuery = activeBookingsQuery('id, date').eq('day', booking.day).eq('time', booking.time);
+            dupQuery = booking.phone ? dupQuery.eq('phone', booking.phone) : dupQuery.eq('name', booking.name);
+            const { data: existing } = await dupQuery;
+            const dupe = (existing || []).some(b => (b.date || null) === (booking.date || null));
+            if (dupe) {
+                alert('⚠️ Този човек вече е записан за тази тренировка!');
+                return;
+            }
+
             const { error } = await sb.from('bookings').insert([booking]);
             if (error) { alert('Грешка: ' + error.message); return; }
             document.getElementById('newResvName').value = '';
+            document.getElementById('newResvPhone').value = '';
             document.getElementById('newResvDate').value = '';
             sel.value = '';
             await refreshPublicBookings();
