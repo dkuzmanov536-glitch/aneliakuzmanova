@@ -716,6 +716,17 @@
             await sb.auth.signOut();
             currentUser = null;
             updateAuthUI(null);
+            const pp = document.getElementById('profilePage');
+            if (pp) pp.style.display = 'none';
+            showPage('home');
+        }
+
+        // Показва/скрива паролата (окото)
+        function togglePw(id, btn) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            if (el.type === 'password') { el.type = 'text'; btn.textContent = '🙈'; }
+            else { el.type = 'password'; btn.textContent = '👁️'; }
         }
 
         function updateClassPrices(isChild) {
@@ -2395,7 +2406,10 @@
                         <label style="font-size:1rem; margin-bottom:6px; display:block;">Email:</label>
                         <input type="email" id="loginEmail" required placeholder="email@example.com" style="font-size:1rem; padding:13px 15px; margin-bottom:15px;">
                         <label style="font-size:1rem; margin-bottom:6px; display:block;">Парола:</label>
-                        <input type="password" id="loginPassword" required placeholder="Парола" style="font-size:1rem; padding:13px 15px; margin-bottom:5px;">
+                        <div style="position:relative; margin-bottom:5px;">
+                            <input type="password" id="loginPassword" required placeholder="Парола" style="font-size:1rem; padding:13px 44px 13px 15px; margin:0; width:100%; box-sizing:border-box;">
+                            <button type="button" onclick="togglePw('loginPassword', this)" title="Покажи/скрий паролата" style="position:absolute; right:6px; top:0; height:100%; background:none; border:none; cursor:pointer; font-size:1.15rem; padding:0 8px;">👁️</button>
+                        </div>
                         <button type="submit" class="btn" style="width:100%; margin-top:25px; padding:15px; font-size:1.05rem;">Влез</button>
                     </form>
                 </div>
@@ -2413,7 +2427,10 @@
                         <label style="font-size:1rem; margin-bottom:6px; display:block;">Email:</label>
                         <input type="email" id="regEmail" required placeholder="email@example.com" style="font-size:1rem; padding:13px 15px; margin-bottom:15px;">
                         <label style="font-size:1rem; margin-bottom:6px; display:block;">Парола:</label>
-                        <input type="password" id="regPassword" required placeholder="Минимум 6 символа" style="font-size:1rem; padding:13px 15px; margin-bottom:15px;">
+                        <div style="position:relative; margin-bottom:15px;">
+                            <input type="password" id="regPassword" required placeholder="Минимум 6 символа" style="font-size:1rem; padding:13px 44px 13px 15px; margin:0; width:100%; box-sizing:border-box;">
+                            <button type="button" onclick="togglePw('regPassword', this)" title="Покажи/скрий паролата" style="position:absolute; right:6px; top:0; height:100%; background:none; border:none; cursor:pointer; font-size:1.15rem; padding:0 8px;">👁️</button>
+                        </div>
                         <div style="display:flex; align-items:center; gap:12px; background:#f0f8ff; padding:14px; border-radius:10px;">
                             <input type="checkbox" id="regIsChild" style="width:22px; height:22px; cursor:pointer;">
                             <label for="regIsChild" style="cursor:pointer; font-weight:500; margin:0; font-size:1rem;">Дете съм</label>
@@ -2636,8 +2653,9 @@
     <!-- Profile Modal -->
     <!-- Profile Page (full screen) -->
     <div id="profilePage" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:var(--light); z-index:2000; overflow-y:auto;">
-        <div style="background:linear-gradient(135deg, var(--dark), #2d2d30); color:white; padding:20px 25px;">
+        <div style="background:linear-gradient(135deg, var(--dark), #2d2d30); color:white; padding:20px 25px; display:flex; align-items:center; justify-content:space-between;">
             <h2 style="margin:0; font-size:1.3rem;">👤 Моят Профил</h2>
+            <button onclick="logout()" style="background:transparent; color:white; border:1px solid rgba(255,255,255,0.4); padding:7px 16px; border-radius:15px; cursor:pointer; font-size:0.9rem;">Изход ↪</button>
         </div>
         <div class="container" style="max-width:700px; padding:25px 20px; padding-bottom:90px;">
 
