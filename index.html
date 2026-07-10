@@ -363,6 +363,17 @@
                         </div>
                     </div>
 
+                    <!-- Запиши човек само по име (от админа) -->
+                    <div style="background:#eef7ee; border:1px solid #cde8cd; padding:14px; border-radius:10px; margin-bottom:14px;">
+                        <h4 style="margin-bottom:10px;">➕ Запиши човек (само по име)</h4>
+                        <div style="display:flex; flex-direction:column; gap:8px;">
+                            <input type="text" id="newResvName" placeholder="Име (задължително)" style="padding:9px 12px; border:1px solid #ddd; border-radius:5px; font-family:Arial,sans-serif;">
+                            <select id="newResvSlot" style="padding:9px; border:1px solid #ddd; border-radius:5px; font-family:Arial,sans-serif;"></select>
+                            <input type="date" id="newResvDate" title="Дата (по избор)" style="padding:8px; border:1px solid #ddd; border-radius:5px; font-family:Arial,sans-serif;">
+                            <button class="btn" onclick="addReservationAdmin()" style="width:100%;">Запиши</button>
+                        </div>
+                    </div>
+
                     <div style="margin-bottom:10px;">
                         <input id="searchBookings" oninput="loadAdminBookings()" type="text" placeholder="Търси по име или телефон..." style="width:100%;padding:9px 12px;border:1px solid #ddd;border-radius:5px;font-family:Arial,sans-serif;font-size:14px;">
                     </div>
@@ -487,10 +498,10 @@
             <form onsubmit="submitBooking(event)">
                 <label>Име:</label>
                 <input type="text" id="bookingName" required>
-                <label>Фамилия (по избор):</label>
-                <input type="text" id="bookingSurname">
-                <label>Телефон (по избор):</label>
-                <input type="tel" id="bookingPhone">
+                <label>Фамилия:</label>
+                <input type="text" id="bookingSurname" required>
+                <label>Телефон:</label>
+                <input type="tel" id="bookingPhone" required>
                 <label>Ден:</label>
                 <input type="text" id="bookingDay" readonly>
                 <input type="hidden" id="bookingDate">
@@ -1509,8 +1520,49 @@
             selectedDay = null;
             const p = document.getElementById('pickDate'); if (p) p.value = '';
             updateWeekUI();
+            populateResvSlots();
             await populateClassFilter();
             await loadAdminBookings();
+        }
+
+        // Запълва падащото меню с тренировките от графика (за ръчно записване от админа)
+        function populateResvSlots() {
+            const sel = document.getElementById('newResvSlot');
+            if (!sel) return;
+            let opts = '<option value="">-- Избери тренировка --</option>';
+            Object.entries(schedule).forEach(([day, slots]) => {
+                (slots || []).forEach(slot => {
+                    const val = [day, slot.time, slot.class, slot.price, slot.date || ''].join('|');
+                    const label = `${day} ${slot.time} — ${slot.class}${slot.date ? ' (' + slot.date + ')' : ''}`;
+                    opts += `<option value="${val}">${label}</option>`;
+                });
+            });
+            sel.innerHTML = opts;
+        }
+
+        // Ръчно записване на човек от админ панела — само по име (без фамилия/телефон)
+        async function addReservationAdmin() {
+            const name = document.getElementById('newResvName').value.trim();
+            if (!name) { alert('Въведи име!'); return; }
+            const sel = document.getElementById('newResvSlot');
+            if (!sel.value) { alert('Избери тренировка!'); return; }
+            const [day, time, cls, price, slotDate] = sel.value.split('|');
+            let date = slotDate || null;
+            const override = document.getElementById('newResvDate').value; // ISO YYYY-MM-DD или ''
+            if (override) { const [y, m, d] = override.split('-'); date = `${d}.${m}.${y}`; }
+            const booking = {
+                name, phone: null, day, date: date || null, time,
+                class: cls, price: (price && !String(price).includes('€')) ? price + '€' : price,
+                payment: 'на място', is_child: false, is_deleted: false
+            };
+            const { error } = await sb.from('bookings').insert([booking]);
+            if (error) { alert('Грешка: ' + error.message); return; }
+            document.getElementById('newResvName').value = '';
+            document.getElementById('newResvDate').value = '';
+            sel.value = '';
+            await refreshPublicBookings();
+            await loadAdminBookings();
+            alert('✓ Записан: ' + name);
         }
 
         // Запълва падащото меню "тип тренировка" с РЕАЛНО съществуващите класове от базата,
