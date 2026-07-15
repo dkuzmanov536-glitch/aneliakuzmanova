@@ -436,6 +436,7 @@
                         <h4 style="margin-bottom:10px;">➕ Добави карта</h4>
                         <div style="display:flex; flex-direction:column; gap:8px;">
                             <input type="text" id="newCardName" placeholder="Име (задължително)" style="padding:9px 12px; border:1px solid #ddd; border-radius:5px; font-family:Arial,sans-serif;">
+                            <input type="text" id="newCardSurname" placeholder="Фамилия (задължително)" style="padding:9px 12px; border:1px solid #ddd; border-radius:5px; font-family:Arial,sans-serif;">
                             <div style="display:flex; gap:8px; flex-wrap:wrap;">
                                 <select id="newCardType" style="flex:1; min-width:130px; padding:9px; border:1px solid #ddd; border-radius:5px; font-family:Arial,sans-serif;">
                                     <option value="12">12 тренировки</option>
@@ -1084,8 +1085,11 @@
 
         // Добавяне на карта от админ панела — задължително е само името
         async function addCardAdmin() {
-            const name = document.getElementById('newCardName').value.trim();
-            if (!name) { alert('Въведи име!'); return; }
+            const firstName = document.getElementById('newCardName').value.trim();
+            const surname = document.getElementById('newCardSurname').value.trim();
+            if (!firstName) { alert('Въведи име!'); return; }
+            if (!surname) { alert('Въведи фамилия!'); return; }
+            const name = firstName + ' ' + surname;
             const total = parseInt(document.getElementById('newCardType').value) || 12;
             const phone = document.getElementById('newCardPhone').value.trim();
             let expires = document.getElementById('newCardExpires').value;
@@ -1109,6 +1113,7 @@
                     }).eq('id', cur.id);
                     if (error) { alert('Грешка: ' + error.message); return; }
                     document.getElementById('newCardName').value = '';
+                    document.getElementById('newCardSurname').value = '';
                     document.getElementById('newCardPhone').value = '';
                     document.getElementById('newCardExpires').value = '';
                     loadCardsAdmin();
@@ -1129,6 +1134,7 @@
             const { error } = await sb.from('cards').insert([card]);
             if (error) { alert('Грешка: ' + error.message); return; }
             document.getElementById('newCardName').value = '';
+            document.getElementById('newCardSurname').value = '';
             document.getElementById('newCardPhone').value = '';
             document.getElementById('newCardExpires').value = '';
             loadCardsAdmin();
