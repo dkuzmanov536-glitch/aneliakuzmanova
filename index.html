@@ -1093,6 +1093,30 @@
                 const d = new Date(); d.setMonth(d.getMonth() + 1);
                 expires = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
             }
+
+            // Засичане по телефон — ако вече има карта за този телефон, предложи удължаване вместо дублиране
+            if (phone) {
+                const { data: existing } = await sb.from('cards').select('*').eq('phone', phone).order('created_at', { ascending: false }).limit(1);
+                if (existing && existing.length > 0) {
+                    const cur = existing[0];
+                    const left = (cur.trainings_total || 0) - (cur.trainings_used || 0);
+                    if (!confirm(`Вече има карта за ${phone} (${cur.name || ''} — ${left} оставащи).\n\nОК = удължи с още ${total} тренировки\nОтказ = не прави нищо`)) return;
+                    const newExpires = (cur.expires_at && cur.expires_at > expires) ? cur.expires_at : expires;
+                    const { error } = await sb.from('cards').update({
+                        trainings_total: (cur.trainings_total || 0) + total,
+                        expires_at: newExpires,
+                        active: true
+                    }).eq('id', cur.id);
+                    if (error) { alert('Грешка: ' + error.message); return; }
+                    document.getElementById('newCardName').value = '';
+                    document.getElementById('newCardPhone').value = '';
+                    document.getElementById('newCardExpires').value = '';
+                    loadCardsAdmin();
+                    alert(`✓ Картата е удължена с ${total} тренировки`);
+                    return;
+                }
+            }
+
             const card = {
                 name,
                 phone: phone || null,
