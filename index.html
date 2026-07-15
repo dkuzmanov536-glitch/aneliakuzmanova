@@ -2322,13 +2322,17 @@
             if (!bks || bks.length === 0) {
                 bList.innerHTML = '<div class="empty">Нямаш записвания</div>';
             } else {
-                bList.innerHTML = bks.map(b => `
+                bList.innerHTML = bks.map(b => {
+                    const sd = bookingSessionDate(b);
+                    const dateStr = b.date || (sd ? String(sd.getDate()).padStart(2,'0') + '.' + String(sd.getMonth()+1).padStart(2,'0') + '.' + sd.getFullYear() : '');
+                    return `
                     <div class="booking-item" style="border-left-color:var(--primary);">
                         <strong>${b.class}</strong>
-                        <small>${b.day} - ${b.time}</small>
+                        <small>📅 ${b.day}${dateStr ? ', ' + dateStr : ''} - ${b.time}</small>
                         <small>${b.price} ${b.payment ? '| ' + b.payment : ''}</small>
                         <button class="delete-btn" onclick="profileUnsubscribe(${b.id})">Отпиши се</button>
-                    </div>`).join('');
+                    </div>`;
+                }).join('');
             }
 
             // Карта — показвай всички (активни и чакащи)
