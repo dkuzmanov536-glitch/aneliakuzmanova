@@ -407,6 +407,7 @@
                 <div id="videosTab" class="tab-content">
                     <h3 style="margin-bottom:20px;">Управление на Видеа</h3>
                     <div style="background:#f9f9f9; padding:15px; border-radius:10px; margin-bottom:20px; display:flex; flex-direction:column; gap:10px;">
+                        <input type="text" id="videoTitle" placeholder="Текст/заглавие (по избор)" style="padding:9px 12px; border:1px solid #ddd; border-radius:5px; font-family:Arial,sans-serif; font-size:14px;">
                         <input type="file" id="videoUpload" accept="video/*" style="padding:6px; font-family:Arial,sans-serif; font-size:14px;">
                         <div id="uploadProgress" style="display:none; font-size:13px; color:#555;">Качва се...</div>
                         <button class="btn" onclick="uploadVideo()" style="width:100%;">⬆ Качи Видео</button>
@@ -1920,6 +1921,33 @@
             `).join('');
         }
 
+        // Текстът на видеото се пази в името на файла: timestamp.<base64url>.<ext>
+        function encTitle(t) {
+            if (!t) return '';
+            try {
+                return btoa(unescape(encodeURIComponent(t))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+            } catch (e) { return ''; }
+        }
+        function decTitle(s) {
+            if (!s) return '';
+            try {
+                let b64 = s.replace(/-/g, '+').replace(/_/g, '/');
+                while (b64.length % 4) b64 += '=';
+                return decodeURIComponent(escape(atob(b64)));
+            } catch (e) { return ''; }
+        }
+        function videoTitle(name) {
+            const parts = name.split('.');
+            if (parts.length === 3 && /^\d+$/.test(parts[0])) {
+                return decTitle(parts[1]) || 'Видео';
+            }
+            return name.replace(/^\d+_/, '') || 'Видео'; // стар формат
+        }
+        function videoExt(name) {
+            const p = name.split('.');
+            return (p[p.length - 1] || 'mp4').toLowerCase();
+        }
+
         async function loadVideos() {
             const { data } = await sb.storage.from('videos').list('', { sortBy: { column: 'created_at', order: 'desc' } });
             const grid = document.getElementById('videosGrid');
@@ -1938,15 +1966,16 @@
                     return `
                         <div style="background:#2d2d30; border-radius:15px; overflow:hidden; box-shadow:0 10px 30px rgba(0,0,0,0.3);">
                             <video src="${url}" controls style="width:100%; max-height:220px; display:block;"></video>
-                            <p style="padding:12px 15px; font-size:0.85rem; color:#aaa;">${file.name.replace(/^\d+_/, '')}</p>
+                            <p style="padding:12px 15px; font-size:0.85rem; color:#aaa;">${videoTitle(file.name)}</p>
                         </div>`;
                 }).join('');
             }
 
             if (adminList) {
                 adminList.innerHTML = data.map(file => `
-                    <div style="display:flex; justify-content:space-between; align-items:center; padding:10px; background:#f5f5f5; border-radius:8px; margin:8px 0;">
-                        <span style="word-break:break-all;">${file.name.replace(/^\d+_/, '')}</span>
+                    <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; padding:10px; background:#f5f5f5; border-radius:8px; margin:8px 0;">
+                        <span style="word-break:break-all; flex:1;">${videoTitle(file.name)}</span>
+                        <button onclick="editVideoTitle('${file.name}')" style="flex-shrink:0; background:#3498db; color:white; border:none; padding:6px 12px; border-radius:5px; cursor:pointer;">✏️ Текст</button>
                         <button class="delete-btn" onclick="deleteVideo('${file.name}')" style="flex-shrink:0;">Изтрий</button>
                     </div>`).join('');
             }
@@ -1955,15 +1984,30 @@
         async function uploadVideo() {
             const file = document.getElementById('videoUpload').files[0];
             if (!file) { alert('Избери видео файл!'); return; }
+            const title = document.getElementById('videoTitle').value.trim();
+            const ext = videoExt(file.name);
             const progressEl = document.getElementById('uploadProgress');
             progressEl.style.display = 'block';
             progressEl.textContent = 'Качва се... изчакай';
-            const fileName = Date.now() + '_' + file.name;
-            const { error } = await sb.storage.from('videos').upload(fileName, file, { cacheControl: '3600', upsert: false });
+            const fileName = Date.now() + '.' + encTitle(title) + '.' + ext;
+            const { error } = await sb.storage.from('videos').upload(fileName, file, { cacheControl: '3600', upsert: false, contentType: file.type || undefined });
             progressEl.style.display = 'none';
             if (error) { alert('Грешка: ' + error.message); return; }
             alert('Видеото е качено успешно!');
             document.getElementById('videoUpload').value = '';
+            document.getElementById('videoTitle').value = '';
+            loadVideos();
+        }
+
+        // Редактира текста на видеото (преименува файла чрез copy + delete)
+        async function editVideoTitle(fileName) {
+            const current = videoTitle(fileName);
+            const nt = prompt('Текст за видеото:', current === 'Видео' ? '' : current);
+            if (nt === null) return;
+            const newName = Date.now() + '.' + encTitle(nt.trim()) + '.' + videoExt(fileName);
+            const { error: ce } = await sb.storage.from('videos').copy(fileName, newName);
+            if (ce) { alert('Грешка при запазване: ' + ce.message); return; }
+            await sb.storage.from('videos').remove([fileName]);
             loadVideos();
         }
 
