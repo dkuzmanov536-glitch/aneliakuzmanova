@@ -1253,6 +1253,14 @@
             document.getElementById('bookingModal').classList.remove('active');
         }
 
+        // Нормализира телефон за сравнение: само цифри, +359/359 -> 0 (за да не се дублира при различен формат)
+        function normPhone(p) {
+            if (!p) return '';
+            let d = String(p).replace(/\D/g, '');
+            if (d.startsWith('359')) d = '0' + d.slice(3);
+            return d;
+        }
+
         async function submitBooking(e) {
             e.preventDefault();
             const bName = (document.getElementById('bookingName').value + ' ' + document.getElementById('bookingSurname').value).trim();
@@ -1270,11 +1278,19 @@
                 is_deleted: false
             };
 
-            // Провери за дублирано записване — по телефон, а ако няма телефон — по име
-            let dupQuery = activeBookingsQuery('id, date').eq('day', booking.day).eq('time', booking.time);
-            dupQuery = booking.phone ? dupQuery.eq('phone', booking.phone) : dupQuery.eq('name', booking.name);
-            const { data: existing } = await dupQuery;
-            const dupe = (existing || []).some(b => (b.date || null) === (booking.date || null));
+            // Провери за дублирано записване — по НОРМАЛИЗИРАН телефон, за същата сесия (реална дата)
+            const myPhone = normPhone(booking.phone);
+            const mySd = bookingSessionDate({ date: booking.date, day: booking.day, created_at: new Date().toISOString() });
+            const { data: existing } = await activeBookingsQuery('id, date, day, phone, name, created_at')
+                .eq('day', booking.day).eq('time', booking.time);
+            const dupe = (existing || []).some(b => {
+                const bs = bookingSessionDate(b);
+                const sameSession = (mySd && bs) ? (ymd(mySd) === ymd(bs)) : ((b.date || null) === (booking.date || null));
+                if (!sameSession) return false;
+                return myPhone
+                    ? (normPhone(b.phone) === myPhone)
+                    : ((b.name || '').trim().toLowerCase() === booking.name.trim().toLowerCase());
+            });
             if (dupe) {
                 alert('⚠️ Вече сте записани за тази тренировка!');
                 return;
