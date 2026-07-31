@@ -600,11 +600,15 @@
         }
 
         async function loadData() {
-            // Капацитет по вид тренировка (таблица capacity: ред id=1 = аеробика, ред id=2 = РГ и Мобилност)
+            // Капацитет по вид тренировка — кодиран в ред id=1: value = аеробика*1000 + РГ
             const { data: caps } = await sb.from('capacity').select('id, value');
             (caps || []).forEach(row => {
-                if (row.id === 1 && row.value) { capAerobika = row.value; currentCapacity = row.value; }
-                if (row.id === 2 && row.value) capRG = row.value;
+                if (row.id === 1 && row.value != null) {
+                    const v = row.value;
+                    if (v >= 1000) { capAerobika = Math.floor(v / 1000); capRG = v % 1000; }
+                    else { capAerobika = v; } // стар единичен капацитет (РГ остава по подразбиране)
+                    currentCapacity = capAerobika;
+                }
             });
 
             // Зареди записвания — САМО активните (изтритите не заемат места)
@@ -1763,10 +1767,10 @@
             const a = parseInt(document.getElementById('capAerobikaInput').value);
             const r = parseInt(document.getElementById('capRGInput').value);
             if (!(a > 0) || !(r > 0)) { alert('Въведи валиден капацитет!'); return; }
-            const { error } = await sb.from('capacity').upsert(
-                [{ id: 1, value: a }, { id: 2, value: r }],
-                { onConflict: 'id' }
-            );
+            // Пазим двата капацитета в единствения ред (id=1), кодирани в едно число:
+            // аеробика*1000 + РГ. Колоната id е GENERATED ALWAYS, затова само UPDATE на ред 1.
+            const encoded = a * 1000 + r;
+            const { error } = await sb.from('capacity').update({ value: encoded }).eq('id', 1);
             if (error) { alert('Грешка при запазване: ' + error.message); return; }
             capAerobika = a; capRG = r; currentCapacity = a;
             alert(`Капацитетът е запазен:\n🤸‍♀️ Аеробика — ${a} места\n🧘‍♀️ РГ и Мобилност — ${r} места`);
