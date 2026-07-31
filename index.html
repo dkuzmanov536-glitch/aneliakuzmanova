@@ -1386,7 +1386,8 @@
 
         function parseBgDate(s) {
             if (!s) return null;
-            const [d, m, y] = s.split('.');
+            // приема дата с точки, наклонени черти или тирета: 31.07.2026 / 31/07/2026 / 31-07-2026
+            const [d, m, y] = String(s).split(/[.\/-]/);
             if (!d || !m || !y) return null;
             return new Date(+y, +m - 1, +d);
         }
