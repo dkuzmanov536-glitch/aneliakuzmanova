@@ -1265,6 +1265,23 @@
             return d;
         }
 
+        // Обща проверка за дубликат: същата тренировка (ден+час), същата сесия (реална дата)
+        // и същият човек — по НОРМАЛИЗИРАН телефон, а ако няма телефон — по име.
+        async function isDuplicateBooking(booking) {
+            const myPhone = normPhone(booking.phone);
+            const mySd = bookingSessionDate({ date: booking.date, day: booking.day, created_at: new Date().toISOString() });
+            const { data: existing } = await activeBookingsQuery('id, date, day, phone, name, created_at')
+                .eq('day', booking.day).eq('time', booking.time);
+            return (existing || []).some(b => {
+                const bs = bookingSessionDate(b);
+                const sameSession = (mySd && bs) ? (ymd(mySd) === ymd(bs)) : ((b.date || null) === (booking.date || null));
+                if (!sameSession) return false;
+                return myPhone
+                    ? (normPhone(b.phone) === myPhone)
+                    : ((b.name || '').trim().toLowerCase() === (booking.name || '').trim().toLowerCase());
+            });
+        }
+
         async function submitBooking(e) {
             e.preventDefault();
             const bName = (document.getElementById('bookingName').value + ' ' + document.getElementById('bookingSurname').value).trim();
@@ -1282,20 +1299,8 @@
                 is_deleted: false
             };
 
-            // Провери за дублирано записване — по НОРМАЛИЗИРАН телефон, за същата сесия (реална дата)
-            const myPhone = normPhone(booking.phone);
-            const mySd = bookingSessionDate({ date: booking.date, day: booking.day, created_at: new Date().toISOString() });
-            const { data: existing } = await activeBookingsQuery('id, date, day, phone, name, created_at')
-                .eq('day', booking.day).eq('time', booking.time);
-            const dupe = (existing || []).some(b => {
-                const bs = bookingSessionDate(b);
-                const sameSession = (mySd && bs) ? (ymd(mySd) === ymd(bs)) : ((b.date || null) === (booking.date || null));
-                if (!sameSession) return false;
-                return myPhone
-                    ? (normPhone(b.phone) === myPhone)
-                    : ((b.name || '').trim().toLowerCase() === booking.name.trim().toLowerCase());
-            });
-            if (dupe) {
+            // Провери за дублирано записване (по телефон/сесия)
+            if (await isDuplicateBooking(booking)) {
                 alert('⚠️ Вече сте записани за тази тренировка!');
                 return;
             }
@@ -1622,12 +1627,8 @@
                 payment: 'на място', is_child: false, is_deleted: false
             };
 
-            // Проверка за дублиране — по телефон, ако е въведен, иначе по име
-            let dupQuery = activeBookingsQuery('id, date').eq('day', booking.day).eq('time', booking.time);
-            dupQuery = booking.phone ? dupQuery.eq('phone', booking.phone) : dupQuery.eq('name', booking.name);
-            const { data: existing } = await dupQuery;
-            const dupe = (existing || []).some(b => (b.date || null) === (booking.date || null));
-            if (dupe) {
+            // Проверка за дублиране (по телефон/сесия) — същата логика като публичното записване
+            if (await isDuplicateBooking(booking)) {
                 alert('⚠️ Този човек вече е записан за тази тренировка!');
                 return;
             }
