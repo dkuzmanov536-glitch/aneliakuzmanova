@@ -253,18 +253,17 @@
             .hero p { font-size: 0.9rem; }
             section { padding: 25px 10px; }
             .classes-grid {
-                grid-template-columns: repeat(2, 1fr);
-                gap: 10px;
+                grid-template-columns: 1fr;
+                gap: 12px;
                 margin: 15px 0;
             }
             .class-card {
-                padding: 15px 10px;
+                padding: 16px 14px;
                 border-radius: 10px;
             }
-            .class-card h3 { font-size: 0.85rem; margin: 8px 0; }
+            .class-card h3 { font-size: clamp(0.72rem, 3.8vw, 0.95rem); margin: 8px 0; white-space: nowrap; }
             .class-card .price { font-size: 1.1rem; }
-            .class-header { flex-wrap: wrap; }
-            .class-header h3 { flex: 1 1 100%; }
+            .class-header { flex-wrap: nowrap; }
             .chevron { font-size: 1.1rem; }
             .class-card .btn, .class-card a.btn {
                 padding: 8px 10px;
