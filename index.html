@@ -51,26 +51,50 @@
             text-align: left;
         }
         .class-header h3 { margin: 0; }
-        .class-header-right { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
         .chevron {
             display: inline-block;
             font-size: 1.3rem;
             color: var(--primary);
             transition: transform 0.3s ease;
             line-height: 1;
+            flex-shrink: 0;
         }
         .class-card.open .chevron { transform: rotate(180deg); }
         .class-details {
             max-height: 0;
             overflow: hidden;
             text-align: left;
-            transition: max-height 0.4s ease, margin-top 0.4s ease;
-            margin-top: 0;
+            transition: max-height 0.4s ease;
         }
-        .class-card.open .class-details { max-height: 700px; margin-top: 16px; }
+        .class-card.open .class-details { max-height: 700px; }
+        .class-details-inner {
+            margin-top: 16px;
+            background: #f8f9fb;
+            border: 1px solid #e6e6ec;
+            border-radius: 12px;
+            padding: 18px;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.05);
+        }
         .class-details p { margin: 0 0 10px; line-height: 1.5; color: #444; font-size: 0.92rem; }
         .class-details ul { margin: 0 0 10px; padding-left: 20px; }
         .class-details li { margin-bottom: 6px; line-height: 1.5; color: #444; font-size: 0.92rem; }
+        .class-close-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            width: 100%;
+            margin-top: 12px;
+            padding: 10px;
+            background: transparent;
+            border: none;
+            border-top: 1px solid #e0e0e6;
+            color: var(--primary);
+            font-weight: bold;
+            font-size: 0.85rem;
+            cursor: pointer;
+            font-family: inherit;
+        }
         .schedule { background: white; padding: 40px; }
         .day-schedule {
             background: var(--light);
@@ -309,36 +333,36 @@
             <div class="class-card">
                 <div class="class-header" onclick="toggleClassCard(this)">
                     <h3>Индивидуална тренировка</h3>
-                    <div class="class-header-right">
-                        <div class="price">10€</div>
-                        <span class="chevron">⌄</span>
-                    </div>
+                    <span class="chevron">⌄</span>
                 </div>
                 <div class="class-details">
-                    <p>Тренировка, съобразена с Вашите цели, физическа подготовка и желаното ниво на натоварване.</p>
-                    <p>Подходяща за хора без медицински оплаквания, които:</p>
-                    <ul>
-                        <li>предпочитат да тренират индивидуално вместо в група;</li>
-                        <li>искат да подобрят физическата си форма;</li>
-                        <li>желаят да отслабнат, да се стегнат или да повишат силата и издръжливостта си;</li>
-                        <li>искат да усвоят правилната техника на упражненията.</li>
-                    </ul>
-                    <p><strong>Важно:</strong> При наличие на болка, дискова херния, следоперативно състояние или други медицински оплаквания, препоръчителната услуга е „Кинезитерапия (Рехабилитация)“, която включва оценка на състоянието и индивидуален терапевтичен подход.</p>
-                    <p><strong>Цена:</strong> 10 € / 30–40 мин.</p>
+                    <div class="class-details-inner">
+                        <p>Тренировка, съобразена с Вашите цели, физическа подготовка и желаното ниво на натоварване.</p>
+                        <p>Подходяща за хора без медицински оплаквания, които:</p>
+                        <ul>
+                            <li>предпочитат да тренират индивидуално вместо в група;</li>
+                            <li>искат да подобрят физическата си форма;</li>
+                            <li>желаят да отслабнат, да се стегнат или да повишат силата и издръжливостта си;</li>
+                            <li>искат да усвоят правилната техника на упражненията.</li>
+                        </ul>
+                        <p><strong>Важно:</strong> При наличие на болка, дискова херния, следоперативно състояние или други медицински оплаквания, препоръчителната услуга е „Кинезитерапия (Рехабилитация)“, която включва оценка на състоянието и индивидуален терапевтичен подход.</p>
+                        <p><strong>Цена:</strong> 10 € / 30–40 мин.</p>
+                        <button type="button" class="class-close-btn" onclick="closeClassCard(this)">▲ Затвори</button>
+                    </div>
                 </div>
                 <a href="viber://chat?number=%2B359879360792" class="btn" style="margin-top: 15px; width: 100%; display: block; text-align: center; text-decoration: none;">Свържи се с треньора</a>
             </div>
             <div class="class-card">
                 <div class="class-header" onclick="toggleClassCard(this)">
                     <h3>Рехабилитационна програма</h3>
-                    <div class="class-header-right">
-                        <div class="price">35€</div>
-                        <span class="chevron">⌄</span>
-                    </div>
+                    <span class="chevron">⌄</span>
                 </div>
                 <div class="class-details">
-                    <p><strong>Продължителност:</strong> 2 седмици.</p>
-                    <p><strong>Цена:</strong> 35 €.</p>
+                    <div class="class-details-inner">
+                        <p><strong>Продължителност:</strong> 2 седмици.</p>
+                        <p><strong>Цена:</strong> 35 €.</p>
+                        <button type="button" class="class-close-btn" onclick="closeClassCard(this)">▲ Затвори</button>
+                    </div>
                 </div>
                 <a href="viber://chat?number=%2B359879360792" class="btn" style="margin-top: 15px; width: 100%; display: block; text-align: center; text-decoration: none;">Свържи се с треньора</a>
             </div>
@@ -797,6 +821,11 @@
         function toggleClassCard(headerEl) {
             const card = headerEl.closest('.class-card');
             if (card) card.classList.toggle('open');
+        }
+
+        function closeClassCard(btnEl) {
+            const card = btnEl.closest('.class-card');
+            if (card) card.classList.remove('open');
         }
 
         function updateClassPrices(isChild) {
