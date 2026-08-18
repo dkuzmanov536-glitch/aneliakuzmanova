@@ -2299,7 +2299,8 @@
                 alert('Моля попълни всички полета и избери оценка!');
                 return;
             }
-            const { error } = await sb.from('reviews').insert([{ name, rating: currentRating, comment }]);
+            const userPhone = currentUser?.user_metadata?.phone || '';
+            const { error } = await sb.from('reviews').insert([{ name, rating: currentRating, comment, phone: userPhone || null }]);
             if (error) { alert('Грешка при изпращане!'); return; }
 
             // Дай badge за отзив ако е влязъл
@@ -2329,8 +2330,8 @@
             list.innerHTML = data.map(r => `
                 <div style="background:#f9f9f9; padding:20px; border-radius:15px; box-shadow:0 5px 15px rgba(0,0,0,0.05);">
                     <div style="font-size:1.2rem; color:#FFD700; margin-bottom:8px;">${'★'.repeat(r.rating)}${'☆'.repeat(5-r.rating)}</div>
-                    <p style="color:#333; margin-bottom:12px; font-style:italic;">"${r.comment}"</p>
-                    <strong style="color:var(--primary);">${r.name}</strong>
+                    <p style="color:#333; margin-bottom:12px; font-style:italic;">"${escHtml(r.comment)}"</p>
+                    <strong style="color:var(--primary);">${escHtml(r.name)}</strong>
                     <small style="color:#999; display:block; margin-top:4px;">${new Date(r.created_at).toLocaleDateString('bg-BG')}</small>
                 </div>
             `).join('');
@@ -2560,6 +2561,8 @@
                         ${icons[b.badge_type]||'🏅'} ${names[b.badge_type]||b.badge_type}
                     </div>`).join('');
             }
+
+            loadProfileReviews(phone);
         }
 
         async function profileUnsubscribe(id) {
@@ -2619,6 +2622,82 @@
             const inp = document.getElementById('goalInput');
             if (inp) inp.value = '';
             loadProfileData();
+        }
+
+        function escHtml(s) {
+            const d = document.createElement('div');
+            d.textContent = s;
+            return d.innerHTML;
+        }
+
+        async function loadProfileReviews(phone) {
+            const el = document.getElementById('profileReviews');
+            if (!el) return;
+            const userName = currentUser?.user_metadata?.name || '';
+            let query = sb.from('reviews').select('*').order('created_at', { ascending: false });
+            if (phone) {
+                query = query.eq('phone', phone);
+            }
+            const { data } = await query;
+            let myReviews = data || [];
+            if (phone && myReviews.length === 0 && userName) {
+                const { data: byName } = await sb.from('reviews').select('*').eq('name', userName).order('created_at', { ascending: false });
+                myReviews = byName || [];
+            }
+            if (myReviews.length === 0) {
+                el.innerHTML = '<div class="empty">Нямаш отзиви</div>';
+                return;
+            }
+            el.innerHTML = myReviews.map(r => `
+                <div style="background:#f5f5f5;padding:12px;border-radius:8px;margin-bottom:8px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                        <span style="color:#FFD700;font-size:1.1rem;">${'★'.repeat(r.rating)}${'☆'.repeat(5-r.rating)}</span>
+                        <small style="color:#999;">${new Date(r.created_at).toLocaleDateString('bg-BG')}</small>
+                    </div>
+                    <p style="color:#333;margin:0 0 8px;font-style:italic;">"${escHtml(r.comment)}"</p>
+                    <div style="display:flex;gap:8px;">
+                        <button onclick="openEditReview(${r.id})" style="background:#3498db;color:white;border:none;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:0.85rem;">✏️ Редактирай</button>
+                        <button onclick="deleteProfileReview(${r.id})" style="background:#e74c3c;color:white;border:none;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:0.85rem;">🗑️ Изтрий</button>
+                    </div>
+                </div>`).join('');
+        }
+
+        async function openEditReview(id) {
+            const { data } = await sb.from('reviews').select('*').eq('id', id).single();
+            if (!data) { alert('Отзивът не е намерен!'); return; }
+            document.getElementById('editReviewId').value = data.id;
+            document.getElementById('editReviewComment').value = data.comment;
+            window._editReviewRating = data.rating;
+            const stars = document.querySelectorAll('#editStarRating span');
+            stars.forEach((s, i) => s.textContent = i < data.rating ? '★' : '☆');
+            document.getElementById('editReviewModal').classList.add('active');
+        }
+
+        function setEditRating(r) {
+            window._editReviewRating = r;
+            const stars = document.querySelectorAll('#editStarRating span');
+            stars.forEach((s, i) => s.textContent = i < r ? '★' : '☆');
+        }
+
+        async function saveEditReview() {
+            const id = parseInt(document.getElementById('editReviewId').value);
+            const comment = document.getElementById('editReviewComment').value.trim();
+            const rating = window._editReviewRating || 5;
+            if (!comment) { alert('Моля напиши отзив!'); return; }
+            const { error } = await sb.from('reviews').update({ comment, rating }).eq('id', id);
+            if (error) { alert('Грешка: ' + error.message); return; }
+            document.getElementById('editReviewModal').classList.remove('active');
+            alert('Отзивът е обновен!');
+            loadProfileData();
+            loadReviews();
+        }
+
+        async function deleteProfileReview(id) {
+            if (!confirm('Сигурен ли си, че искаш да изтриеш този отзив?')) return;
+            const { error } = await sb.from('reviews').delete().eq('id', id);
+            if (error) { alert('Грешка: ' + error.message); return; }
+            loadProfileData();
+            loadReviews();
         }
 
     </script>
@@ -2930,6 +3009,12 @@
                 <div id="profileBadges" style="display:flex;flex-wrap:wrap;gap:10px;"></div>
             </div>
 
+            <!-- My Reviews -->
+            <div style="background:white;padding:20px;border-radius:12px;margin-bottom:20px;box-shadow:0 2px 10px rgba(0,0,0,0.06);">
+                <h3 style="margin-bottom:15px; color:var(--dark);">Моите отзиви</h3>
+                <div id="profileReviews"><div class="empty">Зареждане...</div></div>
+            </div>
+
             <!-- Monthly Goal -->
             <div style="background:white;padding:20px;border-radius:12px;box-shadow:0 2px 10px rgba(0,0,0,0.06);">
                 <h3 style="margin-bottom:15px; color:var(--dark);">🎯 Месечна цел</h3>
@@ -2942,6 +3027,27 @@
                 <div id="goalProgress"></div>
             </div>
 
+        </div>
+    </div>
+
+    <!-- Edit Review Modal -->
+    <div id="editReviewModal" class="modal" onclick="if(event.target===this) this.classList.remove('active')">
+        <div class="modal-content" style="position:relative; max-width:500px;">
+            <button type="button" class="window-close-arrow" onclick="document.getElementById('editReviewModal').classList.remove('active')" title="Затвори">⌃</button>
+            <h2 style="margin-bottom:18px;">Редактирай отзив</h2>
+            <input type="hidden" id="editReviewId">
+            <div style="margin-bottom:12px;">
+                <span style="font-weight:bold;">Оценка: </span>
+                <span id="editStarRating" style="font-size:1.5rem; cursor:pointer;">
+                    <span onclick="setEditRating(1)">☆</span>
+                    <span onclick="setEditRating(2)">☆</span>
+                    <span onclick="setEditRating(3)">☆</span>
+                    <span onclick="setEditRating(4)">☆</span>
+                    <span onclick="setEditRating(5)">☆</span>
+                </span>
+            </div>
+            <textarea id="editReviewComment" placeholder="Напишете вашия отзив..." style="width:100%; padding:10px; border:1px solid #ddd; border-radius:8px; height:100px; font-family:Arial,sans-serif; resize:vertical;"></textarea>
+            <button class="btn" style="width:100%; margin-top:15px;" onclick="saveEditReview()">Запази промените</button>
         </div>
     </div>
 
