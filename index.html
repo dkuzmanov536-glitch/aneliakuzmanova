@@ -2667,24 +2667,15 @@
             if (!data) { alert('Отзивът не е намерен!'); return; }
             document.getElementById('editReviewId').value = data.id;
             document.getElementById('editReviewComment').value = data.comment;
-            window._editReviewRating = data.rating;
-            const stars = document.querySelectorAll('#editStarRating span');
-            stars.forEach((s, i) => s.textContent = i < data.rating ? '★' : '☆');
+            document.getElementById('editStarRating').textContent = '★'.repeat(data.rating) + '☆'.repeat(5 - data.rating);
             document.getElementById('editReviewModal').classList.add('active');
-        }
-
-        function setEditRating(r) {
-            window._editReviewRating = r;
-            const stars = document.querySelectorAll('#editStarRating span');
-            stars.forEach((s, i) => s.textContent = i < r ? '★' : '☆');
         }
 
         async function saveEditReview() {
             const id = parseInt(document.getElementById('editReviewId').value);
             const comment = document.getElementById('editReviewComment').value.trim();
-            const rating = window._editReviewRating || 5;
             if (!comment) { alert('Моля напиши отзив!'); return; }
-            const { error } = await sb.from('reviews').update({ comment, rating }).eq('id', id);
+            const { error } = await sb.from('reviews').update({ comment }).eq('id', id);
             if (error) { alert('Грешка: ' + error.message); return; }
             document.getElementById('editReviewModal').classList.remove('active');
             alert('Отзивът е обновен!');
@@ -3038,13 +3029,7 @@
             <input type="hidden" id="editReviewId">
             <div style="margin-bottom:12px;">
                 <span style="font-weight:bold;">Оценка: </span>
-                <span id="editStarRating" style="font-size:1.5rem; cursor:pointer;">
-                    <span onclick="setEditRating(1)">☆</span>
-                    <span onclick="setEditRating(2)">☆</span>
-                    <span onclick="setEditRating(3)">☆</span>
-                    <span onclick="setEditRating(4)">☆</span>
-                    <span onclick="setEditRating(5)">☆</span>
-                </span>
+                <span id="editStarRating" style="font-size:1.5rem; color:#FFD700;"></span>
             </div>
             <textarea id="editReviewComment" placeholder="Напишете вашия отзив..." style="width:100%; padding:10px; border:1px solid #ddd; border-radius:8px; height:100px; font-family:Arial,sans-serif; resize:vertical;"></textarea>
             <button class="btn" style="width:100%; margin-top:15px;" onclick="saveEditReview()">Запази промените</button>
