@@ -2391,22 +2391,27 @@
         }
 
         // Initialize
-        showPage('home');
-        loadData();
-        loadVideos();
-        loadReviews();
-        loadStats();
-        loadLocationPublic();
-        requestNotificationPermission();
-        document.getElementById('cardThankYouPage').style.display = 'none'; document.getElementById('cardThankYouPage').style.pointerEvents = 'none';
-        document.getElementById('thankYouPage').style.display = 'none'; document.getElementById('thankYouPage').style.pointerEvents = 'none';
-        sessionStorage.removeItem('cardPurchased');
+        // Изчакваме DOMContentLoaded, защото секции като Отзиви/Видеа/долно меню
+        // са разположени в HTML след този <script> таг — при директно извикване
+        // тук елементите им още не съществуват в DOM-а.
+        window.addEventListener('DOMContentLoaded', () => {
+            showPage('home');
+            loadData();
+            loadVideos();
+            loadReviews();
+            loadStats();
+            loadLocationPublic();
+            requestNotificationPermission();
+            document.getElementById('cardThankYouPage').style.display = 'none'; document.getElementById('cardThankYouPage').style.pointerEvents = 'none';
+            document.getElementById('thankYouPage').style.display = 'none'; document.getElementById('thankYouPage').style.pointerEvents = 'none';
+            sessionStorage.removeItem('cardPurchased');
 
-        // Провери дали вече е влязъл и обнови цените
-        sb.auth.getSession().then(({ data: { session } }) => {
-            if (session?.user) {
-                updateAuthUI(session.user);
-            }
+            // Провери дали вече е влязъл и обнови цените
+            sb.auth.getSession().then(({ data: { session } }) => {
+                if (session?.user) {
+                    updateAuthUI(session.user);
+                }
+            });
         });
 
         function openContactTrainer(type, price) {
