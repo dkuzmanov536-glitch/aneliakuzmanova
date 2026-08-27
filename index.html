@@ -2244,11 +2244,12 @@
         async function loadStats() {
             const startDate = '2026-06-08';
 
-            const [{ count: bookings }, { count: cards }, { count: reviews }] = await Promise.all([
+            const [{ count: bookings }, { count: cards }, reviewsResult] = await Promise.all([
                 activeBookingsQuery('*', { count: 'exact', head: true }).gte('created_at', startDate),
                 sb.from('cards').select('*', { count: 'exact', head: true }),
-                activeReviewsQuery('*', { count: 'exact', head: true })
+                activeReviewsQuery('is_deleted')
             ]);
+            const reviews = (reviewsResult.data || []).filter(isActiveReview).length;
 
             // Уникални клиенти по телефон - всички
             const { data: phones } = await activeBookingsQuery('phone');
@@ -2332,7 +2333,10 @@
         }
 
         function activeReviewsQuery(select = '*', opts) {
-            return sb.from('reviews').select(select, opts).not('is_deleted', 'is', true);
+            return sb.from('reviews').select(select, opts);
+        }
+        function isActiveReview(r) {
+            return r.is_deleted !== true;
         }
 
         async function loadReviews() {
@@ -2351,7 +2355,8 @@
                 list.innerHTML = `<p style="text-align:center; color:#e74c3c; grid-column:1/-1;">Грешка при зареждане: ${escHtml(error.message)}</p>`;
                 return;
             }
-            if (!data || data.length === 0) {
+            data = (data || []).filter(isActiveReview);
+            if (data.length === 0) {
                 list.innerHTML = '<p style="text-align:center; color:#999; grid-column:1/-1;">Все още няма отзиви.</p>';
                 return;
             }
@@ -2668,10 +2673,10 @@
                 query = query.eq('phone', phone);
             }
             const { data } = await query;
-            let myReviews = data || [];
+            let myReviews = (data || []).filter(isActiveReview);
             if (phone && myReviews.length === 0 && userName) {
                 const { data: byName } = await activeReviewsQuery().eq('name', userName).order('created_at', { ascending: false });
-                myReviews = byName || [];
+                myReviews = (byName || []).filter(isActiveReview);
             }
             if (myReviews.length === 0) {
                 el.innerHTML = '<div class="empty">Нямаш отзиви</div>';
@@ -2750,11 +2755,12 @@
                 list.innerHTML = `<p style="color:#e74c3c;">Грешка при зареждане: ${escHtml(error.message)}</p>`;
                 return;
             }
-            if (!data || data.length === 0) {
+            const rows = reviewsAdminView === 'deleted' ? (data || []) : (data || []).filter(isActiveReview);
+            if (rows.length === 0) {
                 list.innerHTML = `<p style="color:#999;">${reviewsAdminView === 'deleted' ? 'Няма изтрити отзиви.' : 'Няма отзиви.'}</p>`;
                 return;
             }
-            list.innerHTML = data.map(r => `
+            list.innerHTML = rows.map(r => `
                 <div style="background:#f9f9f9; padding:14px; border-radius:10px; margin-bottom:10px;">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; flex-wrap:wrap; gap:6px;">
                         <strong style="color:var(--primary);">${escHtml(r.name)}</strong>
