@@ -2336,8 +2336,13 @@
         }
 
         async function loadReviews() {
-            const { data } = await activeReviewsQuery().order('created_at', { ascending: false });
+            const { data, error } = await activeReviewsQuery().order('created_at', { ascending: false });
             const list = document.getElementById('reviewsList');
+            if (error) {
+                console.error('loadReviews error:', error);
+                list.innerHTML = `<p style="text-align:center; color:#e74c3c; grid-column:1/-1;">Грешка при зареждане на отзивите.</p>`;
+                return;
+            }
             if (!data || data.length === 0) {
                 list.innerHTML = '<p style="text-align:center; color:#999; grid-column:1/-1;">Все още няма отзиви.</p>';
                 return;
@@ -2722,10 +2727,15 @@
         async function loadReviewsAdmin() {
             const list = document.getElementById('reviewsAdminList');
             if (!list) return;
+            list.innerHTML = '<p style="color:#999;">Зареждане...</p>';
             const query = reviewsAdminView === 'deleted'
                 ? sb.from('reviews').select('*').eq('is_deleted', true)
                 : activeReviewsQuery();
-            const { data } = await query.order('created_at', { ascending: false });
+            const { data, error } = await query.order('created_at', { ascending: false });
+            if (error) {
+                list.innerHTML = `<p style="color:#e74c3c;">Грешка при зареждане: ${escHtml(error.message)}</p>`;
+                return;
+            }
             if (!data || data.length === 0) {
                 list.innerHTML = `<p style="color:#999;">${reviewsAdminView === 'deleted' ? 'Няма изтрити отзиви.' : 'Няма отзиви.'}</p>`;
                 return;
