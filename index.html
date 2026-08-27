@@ -2332,7 +2332,7 @@
         }
 
         function activeReviewsQuery(select = '*', opts) {
-            return sb.from('reviews').select(select, opts).or('is_deleted.eq.false,is_deleted.is.null');
+            return sb.from('reviews').select(select, opts).not('is_deleted', 'is', true);
         }
 
         async function loadReviews() {
