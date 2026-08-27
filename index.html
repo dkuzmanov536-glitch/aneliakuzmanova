@@ -448,6 +448,7 @@
                     <button class="tab-btn" onclick="switchTab('editSchedule')">Редактирай График</button>
                     <button class="tab-btn" onclick="switchTab('videosTab')">Видеа</button>
                     <button class="tab-btn" onclick="switchTab('cardsTab'); loadCardsAdmin()">Карти</button>
+                    <button class="tab-btn" onclick="switchTab('reviewsAdminTab'); loadReviewsAdmin()">Отзиви</button>
                     <button class="tab-btn" onclick="switchTab('statsTab'); loadStats()">Статистика</button>
                     <button class="tab-btn" onclick="switchTab('locationTab'); loadLocationAdmin()">Местоположение</button>
                 </div>
@@ -563,6 +564,16 @@
                     </div>
 
                     <div id="cardsAdminList"></div>
+                </div>
+
+                <!-- Reviews Tab -->
+                <div id="reviewsAdminTab" class="tab-content">
+                    <h3 style="margin-bottom:15px;">Отзиви</h3>
+                    <div style="display:flex; gap:8px; margin-bottom:14px;">
+                        <button id="btnReviewsActive" onclick="setReviewsAdminView('active')" style="flex:1; padding:9px; border:none; border-radius:8px; cursor:pointer; font-weight:bold; background:var(--primary); color:white;">Активни</button>
+                        <button id="btnReviewsDeleted" onclick="setReviewsAdminView('deleted')" style="flex:1; padding:9px; border:none; border-radius:8px; cursor:pointer; font-weight:bold; background:#eee; color:#555;">Изтрити</button>
+                    </div>
+                    <div id="reviewsAdminList"></div>
                 </div>
 
                 <!-- Stats Tab -->
@@ -2236,7 +2247,7 @@
             const [{ count: bookings }, { count: cards }, { count: reviews }] = await Promise.all([
                 activeBookingsQuery('*', { count: 'exact', head: true }).gte('created_at', startDate),
                 sb.from('cards').select('*', { count: 'exact', head: true }),
-                sb.from('reviews').select('*', { count: 'exact', head: true })
+                activeReviewsQuery('*', { count: 'exact', head: true })
             ]);
 
             // Уникални клиенти по телефон - всички
@@ -2320,8 +2331,12 @@
             loadReviews();
         }
 
+        function activeReviewsQuery(select = '*', opts) {
+            return sb.from('reviews').select(select, opts).or('is_deleted.eq.false,is_deleted.is.null');
+        }
+
         async function loadReviews() {
-            const { data } = await sb.from('reviews').select('*').order('created_at', { ascending: false });
+            const { data } = await activeReviewsQuery().order('created_at', { ascending: false });
             const list = document.getElementById('reviewsList');
             if (!data || data.length === 0) {
                 list.innerHTML = '<p style="text-align:center; color:#999; grid-column:1/-1;">Все още няма отзиви.</p>';
@@ -2634,14 +2649,14 @@
             const el = document.getElementById('profileReviews');
             if (!el) return;
             const userName = currentUser?.user_metadata?.name || '';
-            let query = sb.from('reviews').select('*').order('created_at', { ascending: false });
+            let query = activeReviewsQuery().order('created_at', { ascending: false });
             if (phone) {
                 query = query.eq('phone', phone);
             }
             const { data } = await query;
             let myReviews = data || [];
             if (phone && myReviews.length === 0 && userName) {
-                const { data: byName } = await sb.from('reviews').select('*').eq('name', userName).order('created_at', { ascending: false });
+                const { data: byName } = await activeReviewsQuery().eq('name', userName).order('created_at', { ascending: false });
                 myReviews = byName || [];
             }
             if (myReviews.length === 0) {
@@ -2681,14 +2696,75 @@
             alert('Отзивът е обновен!');
             loadProfileData();
             loadReviews();
+            if (document.getElementById('reviewsAdminList')) loadReviewsAdmin();
         }
 
         async function deleteProfileReview(id) {
             if (!confirm('Сигурен ли си, че искаш да изтриеш този отзив?')) return;
-            const { error } = await sb.from('reviews').delete().eq('id', id);
+            const { error } = await sb.from('reviews').update({ is_deleted: true }).eq('id', id);
             if (error) { alert('Грешка: ' + error.message); return; }
             loadProfileData();
             loadReviews();
+        }
+
+        // ----- Отзиви (админ панел) -----
+        let reviewsAdminView = 'active';
+
+        function setReviewsAdminView(view) {
+            reviewsAdminView = view;
+            document.getElementById('btnReviewsActive').style.background = view === 'active' ? 'var(--primary)' : '#eee';
+            document.getElementById('btnReviewsActive').style.color = view === 'active' ? '#fff' : '#555';
+            document.getElementById('btnReviewsDeleted').style.background = view === 'deleted' ? 'var(--primary)' : '#eee';
+            document.getElementById('btnReviewsDeleted').style.color = view === 'deleted' ? '#fff' : '#555';
+            loadReviewsAdmin();
+        }
+
+        async function loadReviewsAdmin() {
+            const list = document.getElementById('reviewsAdminList');
+            if (!list) return;
+            const query = reviewsAdminView === 'deleted'
+                ? sb.from('reviews').select('*').eq('is_deleted', true)
+                : activeReviewsQuery();
+            const { data } = await query.order('created_at', { ascending: false });
+            if (!data || data.length === 0) {
+                list.innerHTML = `<p style="color:#999;">${reviewsAdminView === 'deleted' ? 'Няма изтрити отзиви.' : 'Няма отзиви.'}</p>`;
+                return;
+            }
+            list.innerHTML = data.map(r => `
+                <div style="background:#f9f9f9; padding:14px; border-radius:10px; margin-bottom:10px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; flex-wrap:wrap; gap:6px;">
+                        <strong style="color:var(--primary);">${escHtml(r.name)}</strong>
+                        <span style="color:#FFD700;">${'★'.repeat(r.rating)}${'☆'.repeat(5-r.rating)}</span>
+                    </div>
+                    <p style="color:#333; margin:0 0 8px; font-style:italic;">"${escHtml(r.comment)}"</p>
+                    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+                        <small style="color:#999;">${new Date(r.created_at).toLocaleDateString('bg-BG')}${r.phone ? ' · ' + escHtml(r.phone) : ''}</small>
+                        <div style="display:flex; gap:8px;">
+                            ${reviewsAdminView === 'deleted'
+                                ? `<button onclick="restoreReviewAdmin(${r.id})" style="background:#27ae60;color:white;border:none;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:0.85rem;">↩ Върни</button>`
+                                : `<button onclick="openEditReview(${r.id})" style="background:#3498db;color:white;border:none;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:0.85rem;">✏️ Редактирай</button>
+                                   <button class="delete-btn" onclick="deleteReviewAdmin(${r.id})">Изтрий</button>`
+                            }
+                        </div>
+                    </div>
+                </div>`).join('');
+        }
+
+        async function deleteReviewAdmin(id) {
+            if (!confirm('Изтрий този отзив?')) return;
+            const { error } = await sb.from('reviews').update({ is_deleted: true }).eq('id', id);
+            if (error) { alert('Грешка: ' + error.message); return; }
+            loadReviewsAdmin();
+            loadReviews();
+            loadStats();
+        }
+
+        async function restoreReviewAdmin(id) {
+            const { error } = await sb.from('reviews').update({ is_deleted: false }).eq('id', id);
+            if (error) { alert('Грешка: ' + error.message); return; }
+            loadReviewsAdmin();
+            loadReviews();
+            loadStats();
         }
 
     </script>
