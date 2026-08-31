@@ -2114,10 +2114,23 @@
         }
 
         async function loadVideos() {
-            const { data } = await sb.storage.from('videos').list('', { sortBy: { column: 'created_at', order: 'desc' } });
             const grid = document.getElementById('videosGrid');
             const adminList = document.getElementById('adminVideosList');
             const SUPABASE_URL = 'https://icxlgvervwohjuspswly.supabase.co';
+
+            let data, error;
+            try {
+                ({ data, error } = await sb.storage.from('videos').list('', { sortBy: { column: 'created_at', order: 'desc' } }));
+            } catch (e) {
+                error = e;
+            }
+            if (error) {
+                console.error('loadVideos error:', error);
+                const msg = `<p style="text-align:center; color:#e74c3c; grid-column:1/-1;">Грешка при зареждане: ${escHtml(error.message || String(error))}</p>`;
+                if (grid) grid.innerHTML = msg;
+                if (adminList) adminList.innerHTML = msg;
+                return;
+            }
 
             if (!data || data.length === 0) {
                 if (grid) grid.innerHTML = '<p style="text-align:center; color:#999; grid-column:1/-1;">Все още няма добавени видеа.</p>';
