@@ -1936,11 +1936,18 @@
                 if (!confirm('Графикът е празен. Сигурен ли си, че искаш да изтриеш ВСИЧКИ тренировки?')) return;
             }
 
-            // Чак сега изтрий старите и запиши новите
-            await sb.from('schedule').delete().neq('id', 0);
+            // Помни старите ID-та, за да ги изтрием само СЛЕД успешен запис на новите
+            const oldIds = Object.values(schedule).flat().map(s => s.id).filter(Boolean);
+
+            // Първо запиши новите редове — ако това гръмне, старият график остава непокътнат
             if (rows.length > 0) {
                 const { error } = await sb.from('schedule').insert(rows);
-                if (error) { alert('Грешка при запазване!'); return; }
+                if (error) { alert('Грешка при запазване: ' + error.message); return; }
+            }
+
+            // Чак сега премахни старите редове (по техните ID-та, не целия график)
+            if (oldIds.length > 0) {
+                await sb.from('schedule').delete().in('id', oldIds);
             }
 
             await loadData();
